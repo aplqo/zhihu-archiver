@@ -28,6 +28,7 @@ library
       Lib
       ZhArchiver.Column.API
       ZhArchiver.Comment.API
+      ZhArchiver.People.API
       ZhArchiver.Question.API
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri
