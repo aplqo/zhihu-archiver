@@ -1,4 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module ZhArchiver.Column.API where
 
@@ -6,16 +6,19 @@ import qualified Data.Aeson as JSON
 import Data.List.NonEmpty
 import Data.Text (Text)
 import Text.URI
-import Text.URI.QQ
 import ZhArchiver.Request.Paging
+import ZhArchiver.Request.Uri
 
-getColItemsRaw :: Bool -> Text -> IO [JSON.Value]
-getColItemsRaw pin cid =
+getItemsRaw :: Text -> IO [JSON.Value]
+getItemsRaw cid =
   do
-    sp <- mkPathPiece cid
+    sp <- $(apiPath "columns" "items") cid
     reqPaging
-      ( httpsURI
-          wwwHost
-          ([pathPiece|api|] :| [[pathPiece|v4|], [pathPiece|columns|], sp, if pin then [pathPiece|pinned-items|] else [pathPiece|items|]])
-          []
-      )
+      (httpsURI sp [])
+
+getPinnedItemsRaw :: Text -> IO [JSON.Value]
+getPinnedItemsRaw cid =
+  do
+    sp <- $(apiPath "columns" "pinned-items") cid
+    reqPaging
+      (httpsURI sp [])

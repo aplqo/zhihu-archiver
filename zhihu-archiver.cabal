@@ -30,6 +30,7 @@ library
       ZhArchiver.Comment.API
       ZhArchiver.Question.API
       ZhArchiver.Request.Paging
+      ZhArchiver.Request.Uri
   other-modules:
       Paths_zhihu_archiver
   autogen-modules:
@@ -44,6 +45,7 @@ library
     , bytestring >=0.10 && <1
     , modern-uri >=0.3 && <1
     , req ==3.*
+    , template-haskell ==2.*
     , text >=1.2 && <2
   default-language: Haskell2010
 
