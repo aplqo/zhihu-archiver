@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lib
       ZhArchiver.Question.Answer
+      ZhArchiver.Request.Paging
   other-modules:
       Paths_zhihu_archiver
   autogen-modules:
