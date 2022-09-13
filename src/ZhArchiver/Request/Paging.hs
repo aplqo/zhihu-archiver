@@ -66,7 +66,8 @@ reqPagingSign u sig = iter (1 :: Int) 0 u
               <$> req GET url NoReqBody (jsonResponse @APIResponse) (op <> sigOp)
 
         let l = cnt + length (rawResult p)
-        putStrLn (concat ["Got page ", show page, ", ", show l, "/", show (paging p >>= totals), " items"])
+        putStrLn
+          (concat ["Got page ", show page, ", ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals), " items"])
 
         case paging p of
           Just pa | not (is_end pa) -> (rawResult p ++) <$> (mkURI (next pa) >>= iter (page + 1) l)

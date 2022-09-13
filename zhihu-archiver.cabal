@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      ZhArchiver.Comment.API
       ZhArchiver.Question.API
       ZhArchiver.Request.Paging
   other-modules:
