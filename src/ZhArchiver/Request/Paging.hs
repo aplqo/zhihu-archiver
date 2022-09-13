@@ -1,9 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeApplications #-}
 
-module ZhArchiver.Request.Paging (reqPaging, reqPagingSign) where
+module ZhArchiver.Request.Paging (apiHost, wwwHost, httpsURI, reqPaging, reqPagingSign) where
 
 import Data.Aeson hiding (Value, defaultOptions)
 import qualified Data.Aeson as JSON
@@ -12,6 +13,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Network.HTTP.Req
 import Text.URI
+import Text.URI.QQ
 
 data Paging = Paging
   { is_end :: Bool,
@@ -37,6 +39,19 @@ instance FromJSON APIResponse where
           p <- o .: "paging"
           return (APIResponse res p)
       )
+
+apiHost = [host|api.zhihu.com|]
+
+wwwHost = [host|www.zhihu.com|]
+
+httpsURI hst pat par =
+  URI
+    { uriScheme = Just [scheme|https|],
+      uriAuthority = Right (Authority Nothing hst Nothing),
+      uriPath = Just (False, pat),
+      uriQuery = par,
+      uriFragment = Nothing
+    }
 
 reqPagingSign :: URI -> (URI -> IO (Option 'Https)) -> IO [JSON.Value]
 reqPagingSign u sig = iter (1 :: Int) 0 u
