@@ -36,7 +36,7 @@ instance FromJSON APIResponse where
       "APIResponse"
       ( \o -> do
           res <- o .: "data"
-          p <- o .: "paging"
+          p <- o .:? "paging"
           return (APIResponse res p)
       )
 
@@ -59,7 +59,7 @@ reqPagingSign u sig = iter (1 :: Int) 0 u
     iter page cnt uri =
       do
         sigOp <- sig uri
-        let (url, op) = fromJust $ useHttpsURI uri
+        let (url, op) = fromJust $ useHttpsURI (uri {uriScheme = Just [scheme|https|]})
         p <-
           runReq defaultHttpConfig $
             responseBody
