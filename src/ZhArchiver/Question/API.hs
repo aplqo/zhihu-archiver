@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module ZhArchiver.Question.Answer where
+module ZhArchiver.Question.API where
 
 import qualified Data.Aeson as JSON
 import Data.List.NonEmpty
@@ -10,8 +10,8 @@ import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Request.Paging
 
-getRawJSON :: Int -> IO [JSON.Value]
-getRawJSON qid =
+getAnswersRaw :: Int -> IO [JSON.Value]
+getAnswersRaw qid =
   do
     p <- mkPathPiece (T.pack (show qid))
     reqPaging
