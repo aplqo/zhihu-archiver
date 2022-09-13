@@ -35,6 +35,13 @@ ghc-options:
 
 library:
   source-dirs: src
+  dependencies:
+  - aeson >= 2.0 && < 3
+  - aeson-pretty >= 0.8 && < 1
+  - req >= 3 && < 4
+  - text >= 1.2 && < 2
+  - bytestring >= 0.10 && < 1
+  - modern-uri >= 0.3 && < 1
 
 executables:
   zhihu-dl:

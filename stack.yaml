@@ -3,3 +3,6 @@ resolver:
 
 packages:
 - .
+
+nix:
+  packages: [zlib, zlib.dev]
