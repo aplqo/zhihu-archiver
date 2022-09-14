@@ -16,6 +16,8 @@ import ZhArchiver.Request.Uri
 data SourceType
   = Article
   | Answer
+  | Collection
+  | Question
 
 getRootCommentRaw :: MonadHttp m => SourceType -> Int -> m [JSON.Value]
 getRootCommentRaw st sid =
@@ -26,6 +28,8 @@ getRootCommentRaw st sid =
           ( case st of
               Article -> [pathPiece|articles|]
               Answer -> [pathPiece|answers|]
+              Collection -> [pathPiece|collections|]
+              Question -> [pathPiece|questions|]
           )
           (T.pack (show sid))
     reqPaging
