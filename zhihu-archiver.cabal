@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      ZhArchiver.Collections.API
       ZhArchiver.Column.API
       ZhArchiver.Comment.API
       ZhArchiver.People.API
