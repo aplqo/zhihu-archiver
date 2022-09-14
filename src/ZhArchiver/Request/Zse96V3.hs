@@ -75,7 +75,7 @@ zse96 zs u =
 
     ret <-
       liftIO
-        ( TE.encodeUtf8 . T.pack . head . words
+        ( TE.encodeUtf8 . T.stripEnd . T.pack
             <$> readProcess
               (encoder zs)
               [ show $
