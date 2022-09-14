@@ -5,11 +5,13 @@
 
 module ZhArchiver.Request.Paging (reqPaging, reqPagingSign) where
 
+import Control.Monad.IO.Class
 import Data.Aeson hiding (Value, defaultOptions)
 import qualified Data.Aeson as JSON
 import Data.Maybe
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Network.HTTP.Client (Request)
 import Network.HTTP.Req hiding (https)
 import Text.URI
 import ZhArchiver.Request.Uri
@@ -39,25 +41,24 @@ instance FromJSON APIResponse where
           return (APIResponse res p)
       )
 
-reqPagingSign :: URI -> (URI -> IO (Option 'Https)) -> IO [JSON.Value]
+reqPagingSign :: MonadHttp m => URI -> (Request -> m Request) -> m [JSON.Value]
 reqPagingSign u sig = iter (1 :: Int) 0 u
   where
     iter page cnt uri =
       do
-        sigOp <- sig uri
         let (url, op) = fromJust $ useHttpsURI (uri {uriScheme = Just https})
         p <-
-          runReq defaultHttpConfig $
-            responseBody
-              <$> req GET url NoReqBody (jsonResponse @APIResponse) (op <> sigOp)
+          responseBody
+            <$> reqCb GET url NoReqBody (jsonResponse @APIResponse) op sig
 
         let l = cnt + length (rawResult p)
-        putStrLn
-          (concat ["Got page ", show page, ", ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals), " items"])
+        liftIO $
+          putStrLn
+            (concat ["Got page ", show page, ", ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals), " items"])
 
         case paging p of
-          Just pa | not (is_end pa) -> (rawResult p ++) <$> (mkURI (next pa) >>= iter (page + 1) l)
+          Just pa | not (is_end pa) -> (rawResult p ++) <$> (liftIO (mkURI (next pa)) >>= iter (page + 1) l)
           _ -> return (rawResult p)
 
-reqPaging :: URI -> IO [JSON.Value]
-reqPaging uri = reqPagingSign uri (const (return mempty))
+reqPaging :: MonadHttp m => URI -> m [JSON.Value]
+reqPaging uri = reqPagingSign uri pure

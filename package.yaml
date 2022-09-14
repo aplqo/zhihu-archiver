@@ -38,11 +38,17 @@ library:
   dependencies:
   - aeson >= 2.0 && < 3
   - aeson-pretty >= 0.8 && < 1
+  - time >= 1.9 && < 2
   - req >= 3 && < 4
+  - http-client >= 0.7 && < 1
+  - http-types >= 0.12 && < 1
   - text >= 1.2 && < 2
   - bytestring >= 0.10 && < 1
   - modern-uri >= 0.3 && < 1
   - template-haskell >= 2 && < 3
+  - process >= 1.6 && < 2
+  - cryptonite >=0.20 && < 1
+  - case-insensitive >= 1.2 && < 2
 
 executables:
   zhihu-dl:
