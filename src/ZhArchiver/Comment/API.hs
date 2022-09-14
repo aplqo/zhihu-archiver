@@ -12,6 +12,7 @@ import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri
+import ZhArchiver.Types
 
 data SourceType
   = Article
@@ -19,7 +20,7 @@ data SourceType
   | Collection
   | Question
 
-getRootCommentRaw :: MonadHttp m => SourceType -> Int -> m [JSON.Value]
+getRootCommentRaw :: MonadHttp m => SourceType -> Id -> m [JSON.Value]
 getRootCommentRaw st sid =
   do
     sp <-
@@ -35,7 +36,7 @@ getRootCommentRaw st sid =
     reqPaging
       (httpsURI sp [])
 
-getChildCommentRaw :: MonadHttp m => Int -> m [JSON.Value]
+getChildCommentRaw :: MonadHttp m => Id -> m [JSON.Value]
 getChildCommentRaw sid =
   do
     sp <- liftIO $ $(apiPath "comment_v5" "childComment") (T.pack (show sid))

@@ -34,6 +34,7 @@ library
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri
       ZhArchiver.Request.Zse96V3
+      ZhArchiver.Types
   other-modules:
       Paths_zhihu_archiver
   autogen-modules:

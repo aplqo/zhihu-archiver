@@ -13,8 +13,9 @@ import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri
+import ZhArchiver.Types
 
-getAnswersRaw :: MonadHttp m => Int -> m [JSON.Value]
+getAnswersRaw :: MonadHttp m => Id -> m [JSON.Value]
 getAnswersRaw qid =
   do
     p <- liftIO $ $(apiPath "questions" "feeds") (T.pack (show qid))

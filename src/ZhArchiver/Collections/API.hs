@@ -10,8 +10,9 @@ import Network.HTTP.Req
 import Text.URI
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri
+import ZhArchiver.Types
 
-getItemsRaw :: MonadHttp m => Int -> m [JSON.Value]
+getItemsRaw :: MonadHttp m => Id -> m [JSON.Value]
 getItemsRaw cid = do
   sp <- liftIO $ $(apiPath "collections" "items") (T.pack (show cid))
   reqPaging (httpsURI sp [])
