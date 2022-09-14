@@ -11,6 +11,8 @@ import qualified Data.Aeson as JSON
 import Data.Maybe
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import GHC.IO.Handle (hFlush)
+import GHC.IO.Handle.FD (stdout)
 import Network.HTTP.Client (Request)
 import Network.HTTP.Req hiding (https)
 import Text.URI
@@ -52,13 +54,14 @@ reqPagingSign u sig = iter (1 :: Int) 0 u
             <$> reqCb GET url NoReqBody (jsonResponse @APIResponse) op sig
 
         let l = cnt + length (rawResult p)
-        liftIO $
-          putStrLn
-            (concat ["Got page ", show page, ", ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals), " items"])
+        liftIO $ do
+          putStr
+            (concat ["\ESC[2K\ESC[G" {- clear line -}, "Got page ", show page, ", ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals), " items"])
+          hFlush stdout
 
         case paging p of
           Just pa | not (is_end pa) -> (rawResult p ++) <$> (liftIO (mkURI (next pa)) >>= iter (page + 1) l)
-          _ -> return (rawResult p)
+          _ -> liftIO (putChar '\n') >> return (rawResult p)
 
 reqPaging :: MonadHttp m => URI -> m [JSON.Value]
 reqPaging uri = reqPagingSign uri pure
