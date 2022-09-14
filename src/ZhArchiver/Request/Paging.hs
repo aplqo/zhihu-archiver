@@ -10,6 +10,7 @@ import Data.Aeson hiding (Value, defaultOptions)
 import qualified Data.Aeson as JSON
 import Data.Maybe
 import Data.Text (Text)
+import qualified Data.Text as T
 import GHC.Generics (Generic)
 import GHC.IO.Handle (hFlush)
 import GHC.IO.Handle.FD (stdout)
@@ -38,7 +39,7 @@ instance FromJSON APIResponse where
     withObject
       "APIResponse"
       ( \o -> do
-          res <- o .: "data"
+          res <- fromMaybe [] <$> o .:? "data"
           p <- o .:? "paging"
           return (APIResponse res p)
       )
@@ -46,6 +47,7 @@ instance FromJSON APIResponse where
 reqPagingSign :: MonadHttp m => URI -> (Request -> m Request) -> m [JSON.Value]
 reqPagingSign u sig = iter (1 :: Int) 0 u
   where
+    fixup url = if T.last url == '&' then T.dropEnd 1 url else url
     iter page cnt uri =
       do
         let (url, op) = fromJust $ useHttpsURI (uri {uriScheme = Just https})
@@ -60,7 +62,7 @@ reqPagingSign u sig = iter (1 :: Int) 0 u
           hFlush stdout
 
         case paging p of
-          Just pa | not (is_end pa) -> (rawResult p ++) <$> (liftIO (mkURI (next pa)) >>= iter (page + 1) l)
+          Just pa | not (is_end pa) -> (rawResult p ++) <$> (liftIO (mkURI (fixup $ next pa)) >>= iter (page + 1) l)
           _ -> liftIO (putChar '\n') >> return (rawResult p)
 
 reqPaging :: MonadHttp m => URI -> m [JSON.Value]
