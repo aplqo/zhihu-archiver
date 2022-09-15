@@ -49,6 +49,12 @@ library:
   - process >= 1.6 && < 2
   - cryptonite >=0.20 && < 1
   - case-insensitive >= 1.2 && < 2
+  - unordered-containers >= 0.2 && < 1
+  - vector >= 0.12 && < 1
+  - hashable
+  - memory
+  - mtl
+  - tagsoup
 
 executables:
   zhihu-dl:
