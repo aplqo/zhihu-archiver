@@ -39,7 +39,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Tuple (swap)
-import qualified Data.Vector as V
 import Network.HTTP.Req
 import Network.HTTP.Types.Header
 import Network.Mime (defaultMimeMap)
