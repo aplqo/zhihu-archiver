@@ -18,7 +18,7 @@ instance FromJSON Author where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 2}
 
 instance ToJSON Author where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 3}
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 2}
 
 parseAuthor :: JSON.Value -> Parser (Maybe Author)
 parseAuthor =
