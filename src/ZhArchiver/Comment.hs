@@ -20,6 +20,7 @@ import GHC.Generics (Generic)
 import Network.HTTP.Req
 import Text.URI (mkPathPiece)
 import Text.URI.QQ (pathPiece)
+import ZhArchiver.Author
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Request.Paging
@@ -31,17 +32,6 @@ data SourceType
   | Answer
   | Collection
   | Question
-
-data Author = Author
-  { auId, auUrlToken, auName, auHeadline, auAvatarUrl :: Text
-  }
-  deriving (Generic, Show)
-
-instance FromJSON Author where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 2}
-
-instance ToJSON Author where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 3}
 
 data Comment = Comment
   { comId :: Text,
@@ -140,30 +130,6 @@ parseRawComment =
             )
             v
       )
-  where
-    parseAuthor =
-      withObject
-        "author"
-        ( \o -> do
-            uid <- o .: "id"
-            if uid == "0" -- anonymous
-              then return Nothing
-              else do
-                uToken <- o .: "url_token"
-                name <- o .: "name"
-                headline <- o .: "headline"
-                avatarUrl <- o .: "avatar_url"
-                return
-                  ( Just
-                      Author
-                        { auId = uid,
-                          auUrlToken = uToken,
-                          auName = name,
-                          auHeadline = headline,
-                          auAvatarUrl = avatarUrl
-                        }
-                  )
-        )
 
 fetchChildComment :: (MonadHttp m, MonadThrow m) => Text -> m [(Comment, Maybe Text)]
 fetchChildComment cid = do
