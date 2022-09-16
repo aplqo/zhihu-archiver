@@ -34,6 +34,7 @@ data Question = Question
     qAuthor :: Maybe Author,
     qCreated, qUpdated :: Time,
     qContent :: Maybe Content,
+    qCommentCount :: Int,
     qComments :: [Comment],
     qRawData :: JSON.Value
   }
@@ -73,24 +74,23 @@ instance Item Question where
                   else Just (Content {contHtml = d, contImages = emptyImgMap})
               )
               <$> o .: "detail"
-
           ccnt <- o .: "comment_count"
-
           return
-            ( Question
-                { qId = qid,
-                  qAuthor = author,
-                  qCreated = created,
-                  qUpdated = updated,
-                  qContent = content,
-                  qComments = [],
-                  qRawData = v
-                },
-              ccnt
-            )
+            Question
+              { qId = qid,
+                qAuthor = author,
+                qCreated = created,
+                qUpdated = updated,
+                qContent = content,
+                qCommentCount = ccnt,
+                qComments = [],
+                qRawData = v
+              }
       )
       v
 
+instance Commentable Question where
+  commentCount = qCommentCount
   attachComment v =
     (\c -> v {qComments = c})
       <$> fetchComment StQuestion (T.pack (show (qId v)))
@@ -112,6 +112,7 @@ data Answer = Answer
     aCreated, aUpdated :: Time,
     aVoteUp :: Int64,
     aContent :: Content,
+    aCommentCount :: Int,
     aComment :: [Comment],
     aRawData :: JSON.Value
   }
@@ -143,31 +144,31 @@ instance Item Answer where
       ( \o -> do
           aid <- o .: "id"
           author <- o .: "author" >>= parseAuthor
+          qid <- o .: "question" >>= withObject "question" (.: "id")
           created <- o .: "created_time" >>= parseTime
           updated <- o .: "updated_time" >>= parseTime
           vote <- o .: "voteup_count"
           content <- o .: "content"
-
-          qid <- o .: "question" >>= withObject "question" (.: "id")
           ccnt <- o .: "comment_count"
 
           return
-            ( Answer
-                { aId = aid,
-                  aAuthor = author,
-                  aQuestionId = qid,
-                  aCreated = created,
-                  aUpdated = updated,
-                  aVoteUp = vote,
-                  aContent = Content {contHtml = content, contImages = emptyImgMap},
-                  aComment = [],
-                  aRawData = v
-                },
-              ccnt
-            )
+            Answer
+              { aId = aid,
+                aAuthor = author,
+                aQuestionId = qid,
+                aCreated = created,
+                aUpdated = updated,
+                aVoteUp = vote,
+                aContent = Content {contHtml = content, contImages = emptyImgMap},
+                aCommentCount = ccnt,
+                aComment = [],
+                aRawData = v
+              }
       )
       v
 
+instance Commentable Answer where
+  commentCount = aCommentCount
   attachComment a =
     (\c -> a {aComment = c})
       <$> fetchComment StAnswer (T.pack (show (aId a)))

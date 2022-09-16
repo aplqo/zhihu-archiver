@@ -14,5 +14,8 @@ class Item a where
   type IId a
   type Signer a
   fetchRaw :: (MonadHttp m, MonadThrow m) => Signer a -> IId a -> m (RawData a)
-  parseRaw :: RawData a -> Parser (a, Int)
+  parseRaw :: RawData a -> Parser a
+
+class Commentable a where
+  commentCount :: a -> Int
   attachComment :: (MonadHttp m, MonadThrow m) => a -> m a
