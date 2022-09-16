@@ -46,6 +46,7 @@ instance ToJSON Author where
 data Comment = Comment
   { comId :: Text,
     comAuthor :: Maybe Author,
+    comIsAuthor :: Bool,
     comCreated :: ZonedTime,
     comContent :: Maybe Content,
     comLike, comDislike :: Int,
@@ -111,6 +112,7 @@ parseRawComment =
                       else
                         (\c -> Just (Content {contHtml = c, contImages = emptyImgMap}))
                           <$> o .: "content"
+                isAuthor <- o .: "is_author"
                 liked <- o .: "like_count"
                 disliked <- o .: "dislike_count"
 
@@ -124,6 +126,7 @@ parseRawComment =
                   ( Comment
                       { comId = cid,
                         comAuthor = author,
+                        comIsAuthor = isAuthor,
                         comCreated = created,
                         comContent = cont,
                         comLike = liked,
