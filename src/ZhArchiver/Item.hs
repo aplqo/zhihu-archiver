@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item (RawData (..), Item (..), Commentable (..)) where
+module ZhArchiver.Item (RawData (..), Item (..)) where
 
 import Control.Monad.Catch
 import qualified Data.Aeson as JSON
@@ -15,7 +15,3 @@ class Item a where
   type Signer a
   fetchRaw :: (MonadHttp m, MonadThrow m) => Signer a -> IId a -> m (RawData a)
   parseRaw :: RawData a -> Parser a
-
-class Commentable a where
-  commentCount :: a -> Int
-  attachComment :: (MonadHttp m, MonadThrow m) => a -> m a

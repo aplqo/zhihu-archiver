@@ -4,6 +4,7 @@
 module ZhArchiver.Comment
   ( SourceType (..),
     Comment (..),
+    Commentable (..),
     fetchComment,
   )
 where
@@ -47,6 +48,8 @@ data Comment = Comment
   deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Comment
+
+deriveHasImage ''Comment ['comAuthor, 'comContent, 'comComment]
 
 fetchCommentRaw :: MonadHttp m => Text -> m JSON.Value
 fetchCommentRaw cid =
@@ -169,6 +172,10 @@ buildCommentTree cs =
         { comComment = buildChild cm <$> HM.findWithDefault [] (comId i) cm
         }
 
+class Commentable a where
+  commentCount :: a -> Int
+  attachComment :: (MonadHttp m, MonadThrow m) => a -> m a
+
 fetchComment :: (MonadHttp m, MonadThrow m) => SourceType -> Text -> m [Comment]
 fetchComment typ sid =
   buildCommentTree . concat
@@ -181,5 +188,3 @@ fetchComment typ sid =
                         else ((c, f) :) <$> fetchChildComment (comId c)
               )
         )
-
-deriveHasImage ''Comment ['comAuthor, 'comContent, 'comComment]
