@@ -26,13 +26,14 @@ source-repository head
 library
   exposed-modules:
       Lib
+      ZhArchiver.Author
       ZhArchiver.Collections.API
       ZhArchiver.Column.API
       ZhArchiver.Comment
       ZhArchiver.Content
       ZhArchiver.Image
       ZhArchiver.People.API
-      ZhArchiver.Question.API
+      ZhArchiver.Question
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri
       ZhArchiver.Request.Zse96V3
