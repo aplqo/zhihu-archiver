@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item where
+module ZhArchiver.Item (RawData (..), Item (..), Commentable (..)) where
 
 import Control.Monad.Catch
 import qualified Data.Aeson as JSON

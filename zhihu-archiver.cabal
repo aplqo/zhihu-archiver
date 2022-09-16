@@ -33,6 +33,8 @@ library
       ZhArchiver.Content
       ZhArchiver.Image
       ZhArchiver.Item
+      ZhArchiver.Item.Answer
+      ZhArchiver.Item.Question
       ZhArchiver.People.API
       ZhArchiver.Question
       ZhArchiver.Request.Paging
