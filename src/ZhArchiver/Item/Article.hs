@@ -94,6 +94,6 @@ instance Item Article where
 
 instance Commentable Article where
   commentCount = artCommentCount
-  attachComment a = (\c -> a {artComment = c}) <$> fetchComment StArticle (T.pack (show a))
+  attachComment a = (\c -> a {artComment = c}) <$> fetchComment StArticle (T.pack (show (artId a)))
 
 deriveHasImage ''Article ['artAuthor, 'artImage, 'artTitleImage, 'artContent, 'artComment]
