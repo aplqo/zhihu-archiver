@@ -14,7 +14,7 @@ data Content = Content
   deriving (Show, Generic)
 
 instance FromJSON Content where
-  parseJSON = genericParseJSON defaultOptions
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 4}
 
 instance ToJSON Content where
-  toJSON = genericToJSON defaultOptions
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 4}

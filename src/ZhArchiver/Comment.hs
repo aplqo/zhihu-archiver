@@ -38,10 +38,10 @@ data Author = Author
   deriving (Generic, Show)
 
 instance FromJSON Author where
-  parseJSON = genericParseJSON defaultOptions
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 2}
 
 instance ToJSON Author where
-  toJSON = genericToJSON defaultOptions
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 3}
 
 data Comment = Comment
   { comId :: Text,
@@ -55,10 +55,10 @@ data Comment = Comment
   deriving (Generic, Show)
 
 instance FromJSON Comment where
-  parseJSON = genericParseJSON defaultOptions
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 3}
 
 instance ToJSON Comment where
-  toJSON = genericToJSON defaultOptions
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 3}
 
 fetchCommentRaw :: MonadHttp m => Text -> m JSON.Value
 fetchCommentRaw cid =
