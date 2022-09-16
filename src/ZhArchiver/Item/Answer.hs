@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -9,10 +8,10 @@ module ZhArchiver.Item.Answer (AId (..), Answer (..)) where
 
 import Data.Aeson
 import qualified Data.Aeson as JSON
+import Data.Aeson.TH (deriveJSON)
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
-import GHC.Generics (Generic)
 import Network.HTTP.Req
 import ZhArchiver.Author
 import ZhArchiver.Comment
@@ -37,13 +36,9 @@ data Answer = Answer
     aComment :: [Comment],
     aRawData :: JSON.Value
   }
-  deriving (Show, Generic)
+  deriving (Show)
 
-instance FromJSON Answer where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = tail}
-
-instance ToJSON Answer where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = tail}
+deriveJSON defaultOptions {fieldLabelModifier = tail} ''Answer
 
 instance Item Answer where
   type IId Answer = AId

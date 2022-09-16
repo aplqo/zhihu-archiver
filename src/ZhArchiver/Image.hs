@@ -1,8 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
 module ZhArchiver.Image
@@ -22,8 +22,9 @@ where
 
 import Control.Monad.State
 import Crypto.Hash
-import Data.Aeson hiding (String, Value, defaultOptions)
+import Data.Aeson hiding (String, Value)
 import qualified Data.Aeson as JSON
+import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteArray as BA
 import Data.ByteString (ByteString)
 import Data.CaseInsensitive (original)
@@ -34,7 +35,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Network.HTTP.Req
 import Network.HTTP.Types.Header
 import Text.HTML.TagSoup
@@ -57,13 +57,9 @@ data ImgRef = ImgRef
   { refImgType :: Maybe Text,
     refImgDigest :: ImgDigest
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show)
 
-instance FromJSON ImgRef where
-  parseJSON = genericParseJSON JSON.defaultOptions {fieldLabelModifier = drop 6}
-
-instance ToJSON ImgRef where
-  toJSON = genericToJSON JSON.defaultOptions {fieldLabelModifier = drop 6}
+deriveJSON defaultOptions {fieldLabelModifier = drop 6} ''ImgRef
 
 instance Hashable ImgRef where
   hashWithSalt s i = hashWithSalt s (refImgType i, refImgDigest i)
@@ -72,13 +68,9 @@ data Image = Image
   { imgUrl :: Text,
     imgRef :: Maybe ImgRef
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show)
 
-instance FromJSON Image where
-  parseJSON = genericParseJSON JSON.defaultOptions {fieldLabelModifier = drop 3}
-
-instance ToJSON Image where
-  toJSON = genericToJSON JSON.defaultOptions {fieldLabelModifier = drop 3}
+deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Image
 
 -- | map from url to (type, hash) (sha256)
 newtype ImgMap = ImgHash (HashMap Text ImgRef)

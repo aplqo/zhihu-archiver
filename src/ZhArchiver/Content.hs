@@ -1,23 +1,19 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module ZhArchiver.Content (Content (..)) where
 
 import Data.Aeson
+import Data.Aeson.TH (deriveJSON)
 import Data.Text (Text)
-import GHC.Generics (Generic)
 import ZhArchiver.Image
 
 data Content = Content
   { contHtml :: Text,
     contImages :: ImgMap
   }
-  deriving (Show, Generic)
+  deriving (Show)
 
-instance FromJSON Content where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 4}
-
-instance ToJSON Content where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 4}
+deriveJSON defaultOptions {fieldLabelModifier = drop 4} ''Content
 
 instance HasImage Content where
   fetchImage c = (\im -> c {contImages = im}) <$> getHtmlImages (contHtml c)

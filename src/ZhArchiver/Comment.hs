@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -13,13 +12,13 @@ where
 import Control.Monad.Catch (MonadThrow)
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
+import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types hiding (parse)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe
 import Data.Text (Text)
-import GHC.Generics (Generic)
 import Network.HTTP.Req
 import Text.URI.QQ (pathPiece)
 import ZhArchiver.Author
@@ -46,13 +45,9 @@ data Comment = Comment
     comComment :: [Comment],
     comRawData :: JSON.Value
   }
-  deriving (Generic, Show)
+  deriving (Show)
 
-instance FromJSON Comment where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 3}
-
-instance ToJSON Comment where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 3}
+deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Comment
 
 fetchCommentRaw :: MonadHttp m => Text -> m JSON.Value
 fetchCommentRaw cid =

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -9,11 +8,11 @@ module ZhArchiver.Item.Article (ArtId (..), Article (..)) where
 
 import Data.Aeson
 import qualified Data.Aeson as JSON
+import Data.Aeson.TH (deriveJSON)
 import Data.Int (Int64)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text as T
-import GHC.Generics (Generic)
 import Network.HTTP.Req
 import ZhArchiver.Author
 import ZhArchiver.Comment
@@ -38,13 +37,9 @@ data Article = Article
     artComment :: [Comment],
     artRawData :: JSON.Value
   }
-  deriving (Show, Generic)
+  deriving (Show)
 
-instance FromJSON Article where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = drop 3}
-
-instance ToJSON Article where
-  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 3}
+deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Article
 
 instance Item Article where
   type IId Article = ArtId
