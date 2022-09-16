@@ -142,11 +142,10 @@ parseRawComment =
       withObject
         "author"
         ( \o -> do
-            anon <- o .: "is_anonymous"
-            if anon
+            uid <- o .: "id"
+            if uid == "0" -- anonymous
               then return Nothing
               else do
-                uid <- o .: "id"
                 uToken <- o .: "url_token"
                 name <- o .: "name"
                 headline <- o .: "headline"
