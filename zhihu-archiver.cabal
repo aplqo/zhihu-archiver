@@ -51,6 +51,7 @@ library
     , bytestring >=0.10 && <1
     , case-insensitive >=1.2 && <2
     , cryptonite >=0.20 && <1
+    , exceptions
     , hashable
     , http-client >=0.7 && <1
     , http-types >=0.12 && <1

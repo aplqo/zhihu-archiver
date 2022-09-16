@@ -5,7 +5,7 @@
 
 module ZhArchiver.Comment where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Catch (MonadThrow)
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
 import Data.Aeson.Types hiding (parse)
@@ -70,26 +70,25 @@ fetchCommentRaw cid =
       jsonResponse
       mempty
 
-fetchRootCommentRaw :: MonadHttp m => SourceType -> Text -> m [JSON.Value]
+fetchRootCommentRaw :: (MonadHttp m, MonadThrow m) => SourceType -> Text -> m [JSON.Value]
 fetchRootCommentRaw st sid =
   do
     sp <-
-      liftIO $
-        $(pathTemplate [F "api", F "v4", F "comment_v5", P, T, F "root_comment"])
-          ( case st of
-              Article -> [pathPiece|articles|]
-              Answer -> [pathPiece|answers|]
-              Collection -> [pathPiece|collections|]
-              Question -> [pathPiece|questions|]
-          )
-          sid
+      $(pathTemplate [F "api", F "v4", F "comment_v5", P, T, F "root_comment"])
+        ( case st of
+            Article -> [pathPiece|articles|]
+            Answer -> [pathPiece|answers|]
+            Collection -> [pathPiece|collections|]
+            Question -> [pathPiece|questions|]
+        )
+        sid
     reqPaging
       (httpsURI sp [])
 
-fetchChildCommentRaw :: MonadHttp m => Text -> m [JSON.Value]
+fetchChildCommentRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 fetchChildCommentRaw sid =
   do
-    sp <- liftIO $ $(pathTemplate [F "api", F "v4", F "comment_v5", F "comment", T, F "child_comment"]) sid
+    sp <- $(pathTemplate [F "api", F "v4", F "comment_v5", F "comment", T, F "child_comment"]) sid
     reqPaging
       (httpsURI sp [])
 
@@ -164,7 +163,7 @@ parseRawComment =
                   )
         )
 
-fetchChildComment :: MonadHttp m => Text -> m [(Comment, Maybe Text)]
+fetchChildComment :: (MonadHttp m, MonadThrow m) => Text -> m [(Comment, Maybe Text)]
 fetchChildComment cid = do
   raw <- fmap parse <$> fetchChildCommentRaw cid
   del <- complete (HS.fromList (fmap (comId . fst) raw)) (parents raw)
@@ -205,15 +204,15 @@ buildCommentTree cs =
         { comComment = buildChild cm <$> HM.findWithDefault [] (comId i) cm
         }
 
-fetchComment :: MonadHttp m => SourceType -> Text -> m [Comment]
-fetchComment typ sid = 
-    fetchRootCommentRaw typ sid
-      >>= traverse 
-        ( \i ->
-            let (c, _, cnt) = parseRawComment i
-             in if cnt == 0
-                  then pure c
-                  else do 
-                    chl <- buildCommentTree <$> fetchChildComment (comId c)
-                    return c{comComment = chl}
-        )
+fetchComment :: (MonadHttp m, MonadThrow m) => SourceType -> Text -> m [Comment]
+fetchComment typ sid =
+  fetchRootCommentRaw typ sid
+    >>= traverse
+      ( \i ->
+          let (c, _, cnt) = parseRawComment i
+           in if cnt == 0
+                then pure c
+                else do
+                  chl <- buildCommentTree <$> fetchChildComment (comId c)
+                  return c {comComment = chl}
+      )

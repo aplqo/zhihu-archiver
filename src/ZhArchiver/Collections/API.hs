@@ -2,7 +2,7 @@
 
 module ZhArchiver.Collections.API where
 
-import Control.Monad.IO.Class
+import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as JSON
 import Data.List.NonEmpty
 import qualified Data.Text as T
@@ -12,7 +12,7 @@ import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri
 import ZhArchiver.Types
 
-getItemsRaw :: MonadHttp m => Id -> m [JSON.Value]
+getItemsRaw :: (MonadHttp m, MonadThrow m) => Id -> m [JSON.Value]
 getItemsRaw cid = do
-  sp <- liftIO $ $(apiPath "collections" "items") (T.pack (show cid))
+  sp <- $(apiPath "collections" "items") (T.pack (show cid))
   reqPaging (httpsURI sp [])

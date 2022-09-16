@@ -55,6 +55,7 @@ library:
   - memory
   - mtl
   - tagsoup
+  - exceptions
 
 executables:
   zhihu-dl:

@@ -3,7 +3,7 @@
 
 module ZhArchiver.People.API where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as JSON
 import Data.List.NonEmpty
 import Data.Text (Text)
@@ -14,17 +14,17 @@ import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri
 import ZhArchiver.Request.Zse96V3
 
-getActivityRaw :: MonadHttp m => Text -> m [JSON.Value]
+getActivityRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 getActivityRaw uid =
   do
-    sp <- liftIO $ $(apiPath "web_moments" "activities") uid
+    sp <- $(apiPath "web_moments" "activities") uid
     reqPaging
       (httpsURI sp [])
 
-getAnswersRaw :: MonadHttp m => ZseState -> Text -> m [JSON.Value]
+getAnswersRaw :: (MonadHttp m, MonadThrow m) => ZseState -> Text -> m [JSON.Value]
 getAnswersRaw zs uid =
   do
-    sp <- liftIO $ $(apiPath "members" "answers") uid
+    sp <- $(apiPath "members" "answers") uid
     reqPagingSign
       ( httpsURI
           sp
@@ -35,10 +35,10 @@ getAnswersRaw zs uid =
       )
       (zse96 zs)
 
-getArticlesRaw :: MonadHttp m => ZseState -> Text -> m [JSON.Value]
+getArticlesRaw :: (MonadHttp m, MonadThrow m) => ZseState -> Text -> m [JSON.Value]
 getArticlesRaw zs uid =
   do
-    sp <- liftIO $ $(apiPath "members" "articles") uid
+    sp <- $(apiPath "members" "articles") uid
     reqPagingSign
       ( httpsURI
           sp
@@ -46,34 +46,34 @@ getArticlesRaw zs uid =
       )
       (zse96 zs)
 
-getColumnRaw :: MonadHttp m => Text -> m [JSON.Value]
+getColumnRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 getColumnRaw uid =
   do
-    sp <- liftIO $ $(apiPath "members" "column-contributions") uid
+    sp <- $(apiPath "members" "column-contributions") uid
     reqPaging
       (httpsURI sp [])
 
-getPinsRaw :: MonadHttp m => Text -> m [JSON.Value]
+getPinsRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 getPinsRaw uid =
   do
-    sp <- liftIO $ $(apiPath "pins" "moments") uid
+    sp <- $(apiPath "pins" "moments") uid
     reqPaging
       (httpsURI sp [])
 
-getCollectionsRaw :: MonadHttp m => Text -> m [JSON.Value]
+getCollectionsRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 getCollectionsRaw uid =
   do
-    sp <- liftIO $ $(apiPath "people" "collections") uid
+    sp <- $(apiPath "people" "collections") uid
     reqPaging
       ( httpsURI
           sp
           [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time;data[*].creator.vip_info|]]
       )
 
-getFollowingFavlistsRaw :: MonadHttp m => Text -> m [JSON.Value]
+getFollowingFavlistsRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 getFollowingFavlistsRaw uid =
   do
-    sp <- liftIO $ $(apiPath "members" "following-favlists") uid
+    sp <- $(apiPath "members" "following-favlists") uid
     reqPaging
       ( httpsURI
           sp

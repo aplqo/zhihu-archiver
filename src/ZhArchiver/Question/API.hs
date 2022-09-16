@@ -5,7 +5,7 @@
 
 module ZhArchiver.Question.API where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as JSON
 import Data.List.NonEmpty
 import qualified Data.Text as T
@@ -18,10 +18,10 @@ import ZhArchiver.Request.Uri
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
 
-getAnswersRaw :: MonadHttp m => Id -> m [JSON.Value]
+getAnswersRaw :: (MonadHttp m, MonadThrow m) => Id -> m [JSON.Value]
 getAnswersRaw qid =
   do
-    p <- liftIO $ $(apiPath "questions" "feeds") (T.pack (show qid))
+    p <- $(apiPath "questions" "feeds") (T.pack (show qid))
     reqPaging
       ( httpsURI
           p
