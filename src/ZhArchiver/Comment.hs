@@ -28,10 +28,10 @@ import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types
 
 data SourceType
-  = Article
-  | Answer
-  | Collection
-  | Question
+  = StArticle
+  | StAnswer
+  | StCollection
+  | StQuestion
 
 data Comment = Comment
   { comId :: Text,
@@ -67,10 +67,10 @@ fetchRootCommentRaw st sid =
     sp <-
       $(pathTemplate [F "api", F "v4", F "comment_v5", P, T, F "root_comment"])
         ( case st of
-            Article -> [pathPiece|articles|]
-            Answer -> [pathPiece|answers|]
-            Collection -> [pathPiece|collections|]
-            Question -> [pathPiece|questions|]
+            StArticle -> [pathPiece|articles|]
+            StAnswer -> [pathPiece|answers|]
+            StCollection -> [pathPiece|collections|]
+            StQuestion -> [pathPiece|questions|]
         )
         sid
     reqPaging
