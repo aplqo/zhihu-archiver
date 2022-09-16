@@ -35,6 +35,8 @@ ghc-options:
 
 library:
   source-dirs: src
+  default-extensions:
+  - OverloadedStrings 
   dependencies:
   - aeson >= 2.0 && < 3
   - aeson-pretty >= 0.8 && < 1

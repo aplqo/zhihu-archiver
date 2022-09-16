@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module ZhArchiver.Request.Zse96V3 (ZseState, setup, zse96) where
 
 import Control.Monad.IO.Class
