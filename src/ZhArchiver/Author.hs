@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
-module ZhArchiver.Author where
+module ZhArchiver.Author (Author (..), parseAuthor) where
 
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
@@ -9,6 +10,7 @@ import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import ZhArchiver.Image
+import ZhArchiver.Image.TH
 
 data Author = Author
   { auId, auUrlToken, auName, auHeadline :: Text,
@@ -21,6 +23,8 @@ instance FromJSON Author where
 
 instance ToJSON Author where
   toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 2}
+
+deriveHasImage ''Author ['auAvatar]
 
 parseAuthor :: JSON.Value -> Parser (Maybe Author)
 parseAuthor =

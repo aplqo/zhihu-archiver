@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module ZhArchiver.Content where
+module ZhArchiver.Content (Content (..)) where
 
 import Data.Aeson
 import Data.Text (Text)
@@ -18,3 +18,6 @@ instance FromJSON Content where
 
 instance ToJSON Content where
   toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop 4}
+
+instance HasImage Content where
+  fetchImage c = (\im -> c {contImages = im}) <$> getHtmlImages (contHtml c)

@@ -13,6 +13,8 @@ module ZhArchiver.Image
     FileMap,
     emptyFileMap,
     httpConfig,
+    ImgFetcher,
+    HasImage (..),
     getImage,
     getHtmlImages,
   )
@@ -121,7 +123,21 @@ emptyFileMap = ImgFiles HM.empty
 httpConfig :: HttpConfig
 httpConfig = defaultHttpConfig {httpConfigCheckResponse = \_ _ _ -> Nothing}
 
-getImage :: MonadHttp m => Text -> StateT FileMap m (Maybe ImgRef)
+type ImgFetcher m v = StateT FileMap m v
+
+class HasImage a where
+  fetchImage :: MonadHttp m => a -> ImgFetcher m a
+
+instance HasImage Image where
+  fetchImage im = (\r -> im {imgRef = r}) <$> getImage (imgUrl im)
+
+instance (HasImage a) => HasImage (Maybe a) where
+  fetchImage = traverse fetchImage
+
+instance (HasImage a) => HasImage [a] where
+  fetchImage = traverse fetchImage
+
+getImage :: MonadHttp m => Text -> ImgFetcher m (Maybe ImgRef)
 getImage url =
   case mkURI url >>= useURI of
     Just u ->
@@ -143,7 +159,7 @@ getImage url =
           else return Nothing
     Nothing -> pure Nothing
 
-getHtmlImages :: MonadHttp m => Text -> StateT FileMap m ImgMap
+getHtmlImages :: MonadHttp m => Text -> ImgFetcher m ImgMap
 getHtmlImages htm =
   let imgs = getSrc htm
    in ImgHash . HM.fromList . collect

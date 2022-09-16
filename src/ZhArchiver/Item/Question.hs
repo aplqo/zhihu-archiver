@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module ZhArchiver.Item.Question (QId (..), Question (..)) where
@@ -16,6 +17,7 @@ import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
+import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
@@ -88,3 +90,5 @@ instance Commentable Question where
   attachComment v =
     (\c -> v {qComments = c})
       <$> fetchComment StQuestion (T.pack (show (qId v)))
+
+deriveHasImage ''Question ['qAuthor, 'qContent, 'qComments]

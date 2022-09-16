@@ -3,7 +3,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module ZhArchiver.Comment where
+module ZhArchiver.Comment
+  ( SourceType (..),
+    Comment (..),
+    fetchComment,
+  )
+where
 
 import Control.Monad.Catch (MonadThrow)
 import Data.Aeson hiding (Value)
@@ -21,6 +26,7 @@ import Text.URI.QQ (pathPiece)
 import ZhArchiver.Author
 import ZhArchiver.Content
 import ZhArchiver.Image
+import ZhArchiver.Image.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types
@@ -182,3 +188,5 @@ fetchComment typ sid =
                         else ((c, f) :) <$> fetchChildComment (comId c)
               )
         )
+
+deriveHasImage ''Comment ['comAuthor, 'comContent, 'comComment]

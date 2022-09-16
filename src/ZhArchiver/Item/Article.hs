@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module ZhArchiver.Item.Article (ArtId (..), Article (..)) where
@@ -18,6 +19,7 @@ import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
+import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Types
 
@@ -98,3 +100,5 @@ instance Item Article where
 instance Commentable Article where
   commentCount = artCommentCount
   attachComment a = (\c -> a {artComment = c}) <$> fetchComment StArticle (T.pack (show a))
+
+deriveHasImage ''Article ['artAuthor, 'artImage, 'artTitleImage, 'artContent, 'artComment]

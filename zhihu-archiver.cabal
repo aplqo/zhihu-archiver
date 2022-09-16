@@ -32,6 +32,7 @@ library
       ZhArchiver.Comment
       ZhArchiver.Content
       ZhArchiver.Image
+      ZhArchiver.Image.TH
       ZhArchiver.Item
       ZhArchiver.Item.Answer
       ZhArchiver.Item.Article
