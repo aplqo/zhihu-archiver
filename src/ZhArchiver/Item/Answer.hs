@@ -19,6 +19,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Item
+import ZhArchiver.Item.Question (QId)
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
 
@@ -28,7 +29,7 @@ newtype AId = AId Int
 data Answer = Answer
   { aId :: AId,
     aAuthor :: Maybe Author,
-    aQuestionId :: AId,
+    aQuestion :: (QId, Text),
     aCreated, aUpdated :: Time,
     aVoteUp :: Int64,
     aContent :: Content,
@@ -60,7 +61,15 @@ instance Item Answer where
       ( \o -> do
           aid <- o .: "id"
           author <- o .: "author" >>= parseAuthor
-          qid <- o .: "question" >>= withObject "question" (.: "id")
+          qid <-
+            o .: "question"
+              >>= withObject
+                "question"
+                ( \o -> do
+                    i <- o .: "id"
+                    t <- o .: "title"
+                    return (i, t)
+                )
           created <- o .: "created_time" >>= parseTime
           updated <- o .: "updated_time" >>= parseTime
           vote <- o .: "voteup_count"
@@ -71,7 +80,7 @@ instance Item Answer where
             Answer
               { aId = aid,
                 aAuthor = author,
-                aQuestionId = qid,
+                aQuestion = qid,
                 aCreated = created,
                 aUpdated = updated,
                 aVoteUp = vote,
