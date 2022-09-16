@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -5,12 +6,15 @@
 {-# LANGUAGE TupleSections #-}
 
 module ZhArchiver.Image
-  ( ImgMap,
+  ( ImgRef,
+    Image (..),
+    ImgMap,
     emptyImgMap,
     FileMap,
     emptyFileMap,
     httpConfig,
-    getImages,
+    getImage,
+    getHtmlImages,
   )
 where
 
@@ -24,11 +28,11 @@ import Data.CaseInsensitive (original)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.Hashable (Hashable (hashWithSalt))
-import Data.List (singleton)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Network.HTTP.Req
 import Network.HTTP.Types.Header
 import Text.HTML.TagSoup
@@ -47,8 +51,35 @@ instance ToJSON ImgDigest where
 instance Hashable ImgDigest where
   hashWithSalt s (ImgDigest d) = hashWithSalt s (BA.unpack d)
 
+data ImgRef = ImgRef
+  { refImgType :: Maybe Text,
+    refImgDigest :: ImgDigest
+  }
+  deriving (Eq, Show, Generic)
+
+instance FromJSON ImgRef where
+  parseJSON = genericParseJSON JSON.defaultOptions {fieldLabelModifier = drop 6}
+
+instance ToJSON ImgRef where
+  toJSON = genericToJSON JSON.defaultOptions {fieldLabelModifier = drop 6}
+
+instance Hashable ImgRef where
+  hashWithSalt s i = hashWithSalt s (refImgType i, refImgDigest i)
+
+data Image = Image
+  { imgUrl :: Text,
+    imgRef :: Maybe ImgRef
+  }
+  deriving (Eq, Show, Generic)
+
+instance FromJSON Image where
+  parseJSON = genericParseJSON JSON.defaultOptions {fieldLabelModifier = drop 3}
+
+instance ToJSON Image where
+  toJSON = genericToJSON JSON.defaultOptions {fieldLabelModifier = drop 3}
+
 -- | map from url to (type, hash) (sha256)
-newtype ImgMap = ImgHash (HashMap Text (Maybe Text, ImgDigest))
+newtype ImgMap = ImgHash (HashMap Text ImgRef)
   deriving (Eq, Show)
 
 emptyImgMap :: ImgMap
@@ -65,9 +96,8 @@ instance FromJSON ImgMap where
                 ( \o ->
                     do
                       u <- o .: "url"
-                      t <- o .:? "content_type"
-                      h <- o .: "sha256"
-                      return (u, (t, h))
+                      r <- o .: "ref"
+                      return (u, r)
                 )
             )
       )
@@ -76,18 +106,13 @@ instance ToJSON ImgMap where
   toJSON (ImgHash ih) =
     Array
       ( V.fromList
-          ( ( \(k, (t, d)) ->
-                object
-                  ( maybe [] (singleton . ("content_type" .=)) t
-                      ++ ["url" .= k, "sha256" .= d]
-                  )
-            )
+          ( (\(k, r) -> object ["url" .= k, "ref" .= r])
               <$> HM.toList ih
           )
       )
 
 -- | map from (type, hash) to content
-newtype FileMap = ImgFiles (HashMap (Maybe Text, ImgDigest) ByteString)
+newtype FileMap = ImgFiles (HashMap ImgRef ByteString)
   deriving (Eq, Show)
 
 emptyFileMap :: FileMap
@@ -96,11 +121,33 @@ emptyFileMap = ImgFiles HM.empty
 httpConfig :: HttpConfig
 httpConfig = defaultHttpConfig {httpConfigCheckResponse = \_ _ _ -> Nothing}
 
-getImages :: MonadHttp m => Text -> StateT FileMap m ImgMap
-getImages htm =
+getImage :: MonadHttp m => Text -> StateT FileMap m (Maybe ImgRef)
+getImage url =
+  case mkURI url >>= useURI of
+    Just u ->
+      do
+        dat <- case u of
+          Left (h, o) -> req GET h NoReqBody bsResponse o
+          Right (hs, o) -> req GET hs NoReqBody bsResponse o
+        if responseStatusCode dat == 200
+          then
+            let body = responseBody dat
+                ref =
+                  ImgRef
+                    { refImgType = TE.decodeUtf8 <$> responseHeader dat (original hContentType),
+                      refImgDigest = ImgDigest (hash body)
+                    }
+             in do
+                  modify (\(ImgFiles f) -> ImgFiles (HM.insert ref body f))
+                  return (Just ref)
+          else return Nothing
+    Nothing -> pure Nothing
+
+getHtmlImages :: MonadHttp m => Text -> StateT FileMap m ImgMap
+getHtmlImages htm =
   let imgs = getSrc htm
    in ImgHash . HM.fromList . collect
-        <$> traverse getImg imgs
+        <$> traverse (\url -> fmap (url,) <$> getImage url) imgs
   where
     collect :: [Maybe a] -> [a]
     collect =
@@ -110,25 +157,7 @@ getImages htm =
       collect
         . fmap
           ( \case
-              TagOpen "img" attr ->
-                lookup "src" attr >>= \s -> (s,) <$> (mkURI s >>= useURI)
+              TagOpen "img" attr -> lookup "src" attr
               _ -> Nothing
           )
         . parseTags
-
-    getImg (src, u) =
-      ( do
-          dat <- case u of
-            Left (h, o) -> req GET h NoReqBody bsResponse o
-            Right (hs, o) -> req GET hs NoReqBody bsResponse o
-          if responseStatusCode dat == 200
-            then
-              let body = responseBody dat
-                  typ = TE.decodeUtf8 <$> responseHeader dat (original hContentType)
-                  hsh = ImgDigest (hash body)
-               in do
-                    modify (\(ImgFiles f) -> ImgFiles (HM.insert (typ, hsh) body f))
-                    return (Just (src, (typ, hsh)))
-            else return Nothing
-      ) ::
-        (MonadHttp m => StateT FileMap m (Maybe (Text, (Maybe Text, ImgDigest))))
