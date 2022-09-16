@@ -8,9 +8,11 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import ZhArchiver.Image
 
 data Author = Author
-  { auId, auUrlToken, auName, auHeadline, auAvatarUrl :: Text
+  { auId, auUrlToken, auName, auHeadline :: Text,
+    auAvatar :: Image
   }
   deriving (Generic, Show)
 
@@ -40,7 +42,7 @@ parseAuthor =
                       auUrlToken = uToken,
                       auName = name,
                       auHeadline = headline,
-                      auAvatarUrl = avatarUrl
+                      auAvatar = Image {imgUrl = avatarUrl, imgRef = Nothing}
                     }
               )
     )
