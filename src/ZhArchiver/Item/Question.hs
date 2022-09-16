@@ -44,7 +44,7 @@ instance Item Question where
   type IId Question = QId
   type Signer Question = ZseState
   fetchRaw zs (QId qid) =
-    UnRaw . responseBody
+    Raw . responseBody
       <$> reqCb
         GET
         (https "www.zhihu.com" /: "api" /: "v4" /: "questions" /: T.pack (show qid))
@@ -53,7 +53,7 @@ instance Item Question where
         ("include" =: ("author,description,is_anonymous;detail;comment_count;answer_count;excerpt" :: Text))
         (zse96 zs)
 
-  parseRaw (UnRaw v) =
+  parseRaw (Raw v) =
     withObject
       "question"
       ( \o -> do

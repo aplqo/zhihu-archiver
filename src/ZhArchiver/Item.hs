@@ -7,7 +7,7 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.Types (Parser)
 import Network.HTTP.Req
 
-newtype RawData a = UnRaw JSON.Value
+newtype RawData a = Raw {unRaw :: JSON.Value}
   deriving (Show)
 
 class Item a where

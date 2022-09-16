@@ -48,7 +48,7 @@ instance Item Answer where
   type Signer Answer = ZseState
 
   fetchRaw zs aid =
-    UnRaw . responseBody
+    Raw . responseBody
       <$> reqCb
         GET
         (https "www.zhihu.com" /: "api" /: "v4" /: "answers" /: T.pack (show aid))
@@ -57,7 +57,7 @@ instance Item Answer where
         ("include" =: ("content;comment_count;voteup_count" :: Text))
         (zse96 zs)
 
-  parseRaw (UnRaw v) =
+  parseRaw (Raw v) =
     withObject
       "answer"
       ( \o -> do
