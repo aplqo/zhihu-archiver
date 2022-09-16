@@ -94,7 +94,7 @@ parseRawComment =
             ( \o -> do
                 cid <- o .: "id"
                 author <- o .: "author" >>= parseAuthor
-                created <- utcToZonedTime defaultTimeZone . systemToUTCTime <$> o .: "created_time"
+                created <- o .: "created_time" >>= parseTime
                 cont <-
                   o .: "is_delete" >>= \del ->
                     if del
