@@ -56,12 +56,16 @@ library
     , base >=4.7 && <5
     , bytestring >=0.10 && <1
     , case-insensitive >=1.2 && <2
+    , containers
     , cryptonite >=0.20 && <1
+    , directory
     , exceptions
+    , filepath
     , hashable
     , http-client >=0.7 && <1
     , http-types >=0.12 && <1
     , memory
+    , mime-types
     , modern-uri >=0.3 && <1
     , mtl
     , process >=1.6 && <2

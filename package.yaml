@@ -56,6 +56,10 @@ library:
   - mtl
   - tagsoup
   - exceptions
+  - containers
+  - mime-types
+  - filepath
+  - directory
 
 executables:
   zhihu-dl:
