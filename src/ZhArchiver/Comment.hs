@@ -14,8 +14,6 @@ import qualified Data.HashSet as HS
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe
 import Data.Text (Text)
-import Data.Time.Clock.System (systemToUTCTime)
-import Data.Time.LocalTime
 import GHC.Generics (Generic)
 import Network.HTTP.Req
 import Text.URI (mkPathPiece)
@@ -37,7 +35,7 @@ data Comment = Comment
   { comId :: Text,
     comAuthor :: Maybe Author,
     comIsAuthor :: Bool,
-    comCreated :: ZonedTime,
+    comCreated :: Time,
     comContent :: Maybe Content,
     comLike, comDislike :: Int,
     comComment :: [Comment],
@@ -134,7 +132,7 @@ parseRawComment =
 fetchChildComment :: (MonadHttp m, MonadThrow m) => Text -> m [(Comment, Maybe Text)]
 fetchChildComment cid = do
   raw <- fmap parse <$> fetchChildCommentRaw cid
-  del <- complete (HS.fromList (fmap (comId . fst) raw)) (parents raw)
+  del <- complete (HS.fromList (cid : fmap (comId . fst) raw)) (parents raw)
   return (del ++ raw)
   where
     parse v =
@@ -174,13 +172,13 @@ buildCommentTree cs =
 
 fetchComment :: (MonadHttp m, MonadThrow m) => SourceType -> Text -> m [Comment]
 fetchComment typ sid =
-  fetchRootCommentRaw typ sid
-    >>= traverse
-      ( \i ->
-          let (c, _, cnt) = parseRawComment i
-           in if cnt == 0
-                then pure c
-                else do
-                  chl <- buildCommentTree <$> fetchChildComment (comId c)
-                  return c {comComment = chl}
-      )
+  buildCommentTree . concat
+    <$> ( fetchRootCommentRaw typ sid
+            >>= traverse
+              ( \i ->
+                  let (c, f, cnt) = parseRawComment i
+                   in if cnt == 0
+                        then pure [(c, f)]
+                        else ((c, f) :) <$> fetchChildComment (comId c)
+              )
+        )

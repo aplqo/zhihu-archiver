@@ -1,4 +1,4 @@
-module ZhArchiver.Types (Id, defaultTimeZone, parseTime) where
+module ZhArchiver.Types (Id, Time, defaultTimeZone, parseTime) where
 
 import Data.Aeson
 import qualified Data.Aeson as JSON
