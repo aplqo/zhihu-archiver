@@ -21,7 +21,6 @@ import Data.Maybe
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Network.HTTP.Req
-import Text.URI (mkPathPiece)
 import Text.URI.QQ (pathPiece)
 import ZhArchiver.Author
 import ZhArchiver.Content

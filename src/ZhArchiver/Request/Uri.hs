@@ -48,7 +48,7 @@ pathTemplate ps =
               pn <- newName "p"
               return
                 ( VarP an : as,
-                  BindS (VarP pn) (AppE (VarE (mkName "mkPathPiece")) (VarE an)) : ss,
+                  BindS (VarP pn) (AppE (VarE 'mkPathPiece) (VarE an)) : ss,
                   VarE pn : es
                 )
           P ->
