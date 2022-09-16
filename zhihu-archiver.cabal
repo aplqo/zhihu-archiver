@@ -28,7 +28,9 @@ library
       Lib
       ZhArchiver.Collections.API
       ZhArchiver.Column.API
-      ZhArchiver.Comment.API
+      ZhArchiver.Comment
+      ZhArchiver.Content
+      ZhArchiver.Image
       ZhArchiver.People.API
       ZhArchiver.Question.API
       ZhArchiver.Request.Paging
@@ -49,14 +51,20 @@ library
     , bytestring >=0.10 && <1
     , case-insensitive >=1.2 && <2
     , cryptonite >=0.20 && <1
+    , hashable
     , http-client >=0.7 && <1
     , http-types >=0.12 && <1
+    , memory
     , modern-uri >=0.3 && <1
+    , mtl
     , process >=1.6 && <2
     , req ==3.*
+    , tagsoup
     , template-haskell ==2.*
     , text >=1.2 && <2
     , time >=1.9 && <2
+    , unordered-containers >=0.2 && <1
+    , vector >=0.12 && <1
   default-language: Haskell2010
 
 executable zhihu-dl
