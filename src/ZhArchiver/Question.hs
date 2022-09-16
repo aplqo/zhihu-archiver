@@ -3,16 +3,15 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module ZhArchiver.Question where
 
 import Control.Monad.Catch (MonadThrow)
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
-import Data.Aeson.Types
-import Data.Int
+import Data.Int (Int64)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -24,6 +23,7 @@ import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
+import ZhArchiver.Item
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Request.Zse96V3
@@ -45,55 +45,55 @@ instance FromJSON Question where
 instance ToJSON Question where
   toJSON = genericToJSON defaultOptions {fieldLabelModifier = tail}
 
-fetchQuestionRaw :: MonadHttp m => ZseState -> Id -> m JSON.Value
-fetchQuestionRaw zs qid =
-  responseBody
-    <$> reqCb
-      GET
-      (https "www.zhihu.com" /: "api" /: "v4" /: "questions" /: T.pack (show qid))
-      NoReqBody
-      jsonResponse
-      ("include" =: ("author,description,is_anonymous;detail;comment_count;answer_count;excerpt" :: Text))
-      (zse96 zs)
+instance Item Question where
+  type IId Question = Id
+  type Signer Question = ZseState
+  fetchRaw zs qid =
+    UnRaw . responseBody
+      <$> reqCb
+        GET
+        (https "www.zhihu.com" /: "api" /: "v4" /: "questions" /: T.pack (show qid))
+        NoReqBody
+        jsonResponse
+        ("include" =: ("author,description,is_anonymous;detail;comment_count;answer_count;excerpt" :: Text))
+        (zse96 zs)
 
-parseRawQuestion :: JSON.Value -> Question
-parseRawQuestion =
-  fromJust
-    . parseMaybe
-      ( \v ->
-          withObject
-            "question"
-            ( \o -> do
-                qid <- o .: "id"
-                author <- o .: "author" >>= parseAuthor
-                created <- o .: "created" >>= parseTime
-                updated <- o .: "updated_time" >>= parseTime
-                content <-
-                  ( \d ->
-                      if T.null d
-                        then Nothing
-                        else Just (Content {contHtml = d, contImages = emptyImgMap})
-                    )
-                    <$> o .: "detail"
-                return
-                  Question
-                    { qId = qid,
-                      qAuthor = author,
-                      qCreated = created,
-                      qUpdated = updated,
-                      qContent = content,
-                      qComments = [],
-                      qRawData = v
-                    }
+  parseRaw (UnRaw v) =
+    withObject
+      "question"
+      ( \o -> do
+          qid <- o .: "id"
+          author <- o .: "author" >>= parseAuthor
+          created <- o .: "created" >>= parseTime
+          updated <- o .: "updated_time" >>= parseTime
+          content <-
+            ( \d ->
+                if T.null d
+                  then Nothing
+                  else Just (Content {contHtml = d, contImages = emptyImgMap})
+              )
+              <$> o .: "detail"
+
+          ccnt <- o .: "comment_count"
+
+          return
+            ( Question
+                { qId = qid,
+                  qAuthor = author,
+                  qCreated = created,
+                  qUpdated = updated,
+                  qContent = content,
+                  qComments = [],
+                  qRawData = v
+                },
+              ccnt
             )
-            v
       )
+      v
 
-fetchQuestion :: (MonadHttp m, MonadThrow m) => ZseState -> Id -> m Question
-fetchQuestion zs qid = do
-  q <- parseRawQuestion <$> fetchQuestionRaw zs qid
-  c <- fetchComment StQuestion (T.pack (show qid))
-  return q {qComments = c}
+  attachComment v =
+    (\c -> v {qComments = c})
+      <$> fetchComment StQuestion (T.pack (show (qId v)))
 
 fetchAnswersRaw :: (MonadHttp m, MonadThrow m) => Id -> m [JSON.Value]
 fetchAnswersRaw qid =
@@ -108,6 +108,7 @@ fetchAnswersRaw qid =
 data Answer = Answer
   { aId :: Id,
     aAuthor :: Maybe Author,
+    aQuestionId :: Id,
     aCreated, aUpdated :: Time,
     aVoteUp :: Int64,
     aContent :: Content,
@@ -122,49 +123,51 @@ instance FromJSON Answer where
 instance ToJSON Answer where
   toJSON = genericToJSON defaultOptions {fieldLabelModifier = tail}
 
-fetchAnswerRaw :: MonadHttp m => ZseState -> Id -> m JSON.Value
-fetchAnswerRaw zs aid =
-  responseBody
-    <$> reqCb
-      GET
-      (R.https "www.zhihu.com" /: "api" /: "v4" /: "answers" /: T.pack (show aid))
-      NoReqBody
-      (jsonResponse @JSON.Value)
-      ("include" =: ("content;comment_count;voteup_count" :: T.Text))
-      (zse96 zs)
+instance Item Answer where
+  type IId Answer = Id
+  type Signer Answer = ZseState
 
-parseRawAnswer :: JSON.Value -> (Answer, Int, Int)
-parseRawAnswer =
-  fromJust
-    . parseMaybe
-      ( \v ->
-          withObject
-            "answer"
-            ( \o -> do
-                aid <- o .: "id"
-                author <- o .: "author" >>= parseAuthor
-                created <- o .: "created_time" >>= parseTime
-                updated <- o .: "updated_time" >>= parseTime
-                vote <- o .: "voteup_count"
-                content <- o .: "content"
+  fetchRaw zs aid =
+    UnRaw . responseBody
+      <$> reqCb
+        GET
+        (R.https "www.zhihu.com" /: "api" /: "v4" /: "answers" /: T.pack (show aid))
+        NoReqBody
+        (jsonResponse @JSON.Value)
+        ("include" =: ("content;comment_count;voteup_count" :: T.Text))
+        (zse96 zs)
 
-                qid <- o .: "question" >>= withObject "question" (.: "id")
-                ccnt <- o .: "comment_count"
+  parseRaw (UnRaw v) =
+    withObject
+      "answer"
+      ( \o -> do
+          aid <- o .: "id"
+          author <- o .: "author" >>= parseAuthor
+          created <- o .: "created_time" >>= parseTime
+          updated <- o .: "updated_time" >>= parseTime
+          vote <- o .: "voteup_count"
+          content <- o .: "content"
 
-                return
-                  ( Answer
-                      { aId = aid,
-                        aAuthor = author,
-                        aCreated = created,
-                        aUpdated = updated,
-                        aVoteUp = vote,
-                        aContent = Content {contHtml = content, contImages = emptyImgMap},
-                        aComment = [],
-                        aRawData = v
-                      },
-                    qid,
-                    ccnt
-                  )
+          qid <- o .: "question" >>= withObject "question" (.: "id")
+          ccnt <- o .: "comment_count"
+
+          return
+            ( Answer
+                { aId = aid,
+                  aAuthor = author,
+                  aQuestionId = qid,
+                  aCreated = created,
+                  aUpdated = updated,
+                  aVoteUp = vote,
+                  aContent = Content {contHtml = content, contImages = emptyImgMap},
+                  aComment = [],
+                  aRawData = v
+                },
+              ccnt
             )
-            v
       )
+      v
+
+  attachComment a =
+    (\c -> a {aComment = c})
+      <$> fetchComment StAnswer (T.pack (show (aId a)))
