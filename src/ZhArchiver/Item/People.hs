@@ -89,7 +89,7 @@ instance ZhData People where
 instance ItemContainer People Answer where
   type ICOpt People Answer = ()
   type ICSigner People Answer = ZseState
-  fetchItemsRaw cli _ zs (People {pId = uid}) = do
+  fetchItemsRaw cli _ zs (People {pUrlToken = uid}) = do
     sp <- $(apiPath "members" "answers") uid
     fmap Raw
       <$> reqPagingSign
@@ -108,7 +108,7 @@ instance ItemContainer People Answer where
 instance ItemContainer People Article where
   type ICOpt People Article = ()
   type ICSigner People Article = ZseState
-  fetchItemsRaw cli _ zs (People {pId = uid}) = do
+  fetchItemsRaw cli _ zs (People {pUrlToken = uid}) = do
     sp <- $(apiPath "members" "articles") uid
     fmap Raw
       <$> reqPagingSign
@@ -144,7 +144,7 @@ instance ZhData PeopleColumn where
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
   type ICSigner People PeopleColumn = ()
-  fetchItemsRaw cli _ _ (People {pId = uid}) =
+  fetchItemsRaw cli _ _ (People {pUrlToken = uid}) =
     do
       sp <- $(apiPath "members" "column-contributions") uid
       fmap Raw
@@ -164,7 +164,7 @@ data CollType
 instance ItemContainer People Collection where
   type ICOpt People Collection = CollType
   type ICSigner People Collection = ()
-  fetchItemsRaw cli typ _ People {pId = uid} =
+  fetchItemsRaw cli typ _ People {pUrlToken = uid} =
     fmap Raw <$> case typ of
       CotCreated ->
         do
