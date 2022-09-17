@@ -7,10 +7,12 @@ module ZhArchiver.Item.Column (Column (..)) where
 import Data.Aeson
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
+import Data.Foldable (traverse_)
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
+import System.FilePath
 import ZhArchiver.Author
 import ZhArchiver.Content
 import ZhArchiver.Image
@@ -77,6 +79,9 @@ instance ZhData Column where
          ]
      )
       v
+  saveData p a =
+    withDirectory (p </> showId a) $
+      encodeFilePretty "info.json" a
 
 instance ItemContainer Column AnsOrArt where
   type ICOpt Column AnsOrArt = Bool
@@ -84,8 +89,10 @@ instance ItemContainer Column AnsOrArt where
   fetchItemsRaw cli pin _ Column {coId = cid} =
     if pin
       then do
-        sp1 <- $(apiPath "columns" "items") cid
-        fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp1 [])
-      else do
         sp2 <- $(apiPath "columns" "pinned-items") cid
         fmap Raw <$> reqPaging (pushHeader "pinned-item" cli) (httpsURI sp2 [])
+      else do
+        sp1 <- $(apiPath "columns" "items") cid
+        fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp1 [])
+  saveItems p op c =
+    traverse_ (saveData (p </> showId c </> (if op then "pinned-item" else "item")))

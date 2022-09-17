@@ -6,11 +6,13 @@ module ZhArchiver.Item.AnsOrArt (AnsOrArt (..)) where
 import Data.Aeson.TH
 import Data.Aeson.Types
 import Data.Text (Text)
+import System.FilePath
 import ZhArchiver.Comment
 import ZhArchiver.Image
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer (Answer)
 import ZhArchiver.Item.Article (Article)
+import ZhArchiver.Progress
 
 data AnsOrArt
   = AoaArticle Article
@@ -30,6 +32,13 @@ instance ZhData AnsOrArt where
             _ -> error "unknown column item type"
       )
       v
+  saveData p v = case v of
+    AoaArticle a ->
+      withDirectory (p </> ("article_" ++ showId a)) $
+        encodeFilePretty "info.json" a
+    AoaAnswer a ->
+      withDirectory (p </> ("answer_" ++ showId a)) $
+        encodeFilePretty "info.json" a
 
 instance HasImage AnsOrArt where
   fetchImage cli a =

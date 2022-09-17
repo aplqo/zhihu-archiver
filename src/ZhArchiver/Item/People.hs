@@ -8,9 +8,11 @@ module ZhArchiver.Item.People (People (..), CollType (..)) where
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH
+import Data.Foldable
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
+import System.FilePath
 import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Content
@@ -80,6 +82,9 @@ instance ZhData People where
          ]
      )
       v
+  saveData p a =
+    withDirectory (p </> showId a) $
+      encodeFilePretty "info.json" a
 
 instance ItemContainer People Answer where
   type ICOpt People Answer = ()
@@ -97,6 +102,8 @@ instance ItemContainer People Answer where
             ]
         )
         (zse96 zs)
+  saveItems p _ s =
+    traverse_ (saveData (p </> showId s </> "answer"))
 
 instance ItemContainer People Article where
   type ICOpt People Article = ()
@@ -111,6 +118,8 @@ instance ItemContainer People Article where
             [QueryParam [queryKey|include|] [queryValue|data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;data[*].author.vip_info;|]]
         )
         (zse96 zs)
+  saveItems p _ s =
+    traverse_ (saveData (p </> showId s </> "article"))
 
 data PeopleColumn = PCol {pcColumn :: Column, pcRawData :: JSON.Value}
   deriving (Show)
@@ -128,6 +137,9 @@ instance ZhData PeopleColumn where
          ]
      )
       v
+  saveData p a =
+    withDirectory (p </> showId (pcColumn a)) $
+      encodeFilePretty "info.json" a
 
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
@@ -142,6 +154,8 @@ instance ItemContainer People PeopleColumn where
               sp
               [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
           )
+  saveItems p _ s =
+    traverse_ (saveData (p </> showId s </> "column"))
 
 data CollType
   = CotCreated
@@ -170,3 +184,13 @@ instance ItemContainer People Collection where
                 sp
                 [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time|]]
             )
+  saveItems p t s =
+    traverse_
+      ( saveData
+          ( p </> showId s
+              </> ( case t of
+                      CotCreated -> "collection"
+                      CotLiked -> "following-favlist"
+                  )
+          )
+      )

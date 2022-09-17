@@ -10,10 +10,12 @@ module ZhArchiver.Item.Question (QId (..), Question (..)) where
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
+import Data.Foldable (traverse_)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH
 import Network.HTTP.Req
+import System.FilePath
 import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Author
@@ -77,6 +79,9 @@ instance ZhData Question where
          ]
      )
       v
+  saveData p a =
+    withDirectory (p </> showId a) $
+      encodeFilePretty "info.json" a
 
 instance Commentable Question where
   hasComment = (/= 0) . qCommentCount
@@ -100,3 +105,5 @@ instance ItemContainer Question Answer where
               [QueryParam [queryKey|include|] [queryValue|data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,is_sticky,collapsed_by,suggest_edit,comment_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,relevant_info,question,excerpt,is_labeled,paid_info,paid_info_content,reaction_instruction,relationship.is_authorized,is_author,voting,is_thanked,is_nothelp,is_recognized;data[*].mark_infos[*].url;data[*].author.follower_count,vip_info,badge[*].topics;data[*].settings.table_of_content.enabled|]]
           )
           (zse96 zs)
+  saveItems p _ q =
+    traverse_ (saveData (p </> showId q </> "answer"))

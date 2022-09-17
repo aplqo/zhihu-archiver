@@ -13,6 +13,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
 import Network.HTTP.Req
+import System.FilePath
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
@@ -78,6 +79,9 @@ instance ZhData Article where
          ]
      )
       v
+  saveData p a =
+    withDirectory (p </> showId a) $
+      encodeFilePretty "info.json" a
 
 instance Commentable Article where
   hasComment a = artCommentCount a /= 0

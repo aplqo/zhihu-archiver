@@ -8,10 +8,12 @@ import Control.Applicative
 import Data.Aeson
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH
+import Data.Foldable
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
 import Network.HTTP.Req
+import System.FilePath
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
@@ -74,6 +76,9 @@ instance ZhData Collection where
                ('colRawData, FoRaw)
              ]
          )
+  saveData p a =
+    withDirectory (p </> showId a) $
+      encodeFilePretty "info.json" a
 
 instance Item Collection where
   type IId Collection = Int
@@ -99,3 +104,5 @@ instance ItemContainer Collection AnsOrArt where
   fetchItemsRaw cli _ _ Collection {colId = cid} = do
     sp <- $(apiPath "collections" "items") (T.pack (show cid))
     fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp [])
+  saveItems p _ c =
+    traverse_ (saveData (p </> showId c </> "item"))
