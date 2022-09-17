@@ -17,6 +17,7 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (parseMaybe)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
+import Data.List (sortOn)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -171,6 +172,7 @@ fetchChildComment cli cid = do
               par <- complete (HS.union has (HS.fromList missing)) (parents items)
               return (items ++ par)
 
+-- | sort comments to provide better git diff
 buildCommentTree :: [(Comment, Maybe Text)] -> [Comment]
 buildCommentTree cs =
   let (roots, childMap) =
@@ -182,12 +184,12 @@ buildCommentTree cs =
           )
           ([], HM.empty)
           cs
-   in buildChild childMap <$> roots
+   in buildChild childMap <$> sortOn comId roots
   where
     buildChild :: HM.HashMap Text [Comment] -> Comment -> Comment
     buildChild cm i =
       i
-        { comComment = buildChild cm <$> HM.findWithDefault [] (comId i) cm
+        { comComment = sortOn comId (buildChild cm <$> HM.findWithDefault [] (comId i) cm)
         }
 
 class Commentable a where
