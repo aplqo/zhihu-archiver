@@ -59,7 +59,10 @@ appendHeader :: String -> Cli -> Cli
 appendHeader s c =
   c
     { cliMsgHeader =
-        let orig = cliMsgHeader c in (head orig ++ s) : tail orig
+        let orig = cliMsgHeader c
+         in if null orig
+              then [s]
+              else (head orig ++ s) : tail orig
     }
 
 clearLine :: String
