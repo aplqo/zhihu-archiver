@@ -88,7 +88,7 @@ instance ZhData Answer where
           )
 
 instance Commentable Answer where
-  commentCount = aCommentCount
+  hasComment a = aCommentCount a /= 0
   attachComment cli a =
     (\c -> a {aComment = c})
       <$> fetchComment

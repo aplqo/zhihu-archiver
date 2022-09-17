@@ -80,7 +80,7 @@ instance ZhData Article where
       v
 
 instance Commentable Article where
-  commentCount = artCommentCount
+  hasComment a = artCommentCount a /= 0
   attachComment cli a =
     (\c -> a {artComment = c})
       <$> fetchComment

@@ -79,7 +79,7 @@ instance ZhData Question where
       v
 
 instance Commentable Question where
-  commentCount = qCommentCount
+  hasComment = (/= 0) . qCommentCount
   attachComment cli v =
     (\c -> v {qComments = c})
       <$> fetchComment (pushHeader "comment" cli) StQuestion (T.pack (show (qId v)))

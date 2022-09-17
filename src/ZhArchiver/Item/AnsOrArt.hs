@@ -38,8 +38,8 @@ instance HasImage AnsOrArt where
       AoaAnswer an -> AoaAnswer <$> fetchImage cli an
 
 instance Commentable AnsOrArt where
-  commentCount (AoaArticle a) = commentCount a
-  commentCount (AoaAnswer a) = commentCount a
+  hasComment (AoaArticle a) = hasComment a
+  hasComment (AoaAnswer a) = hasComment a
 
   attachComment cli (AoaArticle a) = AoaArticle <$> attachComment cli a
   attachComment cli (AoaAnswer a) = AoaAnswer <$> attachComment cli a

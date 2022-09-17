@@ -191,8 +191,20 @@ buildCommentTree cs =
         }
 
 class Commentable a where
-  commentCount :: a -> Int
+  hasComment :: a -> Bool
   attachComment :: (MonadHttp m, MonadThrow m) => Cli -> a -> m a
+
+instance (Commentable a, ShowId a) => Commentable [a] where
+  hasComment = any hasComment
+  attachComment cli v =
+    let num = length v
+     in traverse
+          ( \(i, idx) ->
+              if hasComment i
+                then attachComment (appendHeader (" " ++ showId i ++ " " ++ show idx ++ "/" ++ show num) cli) i
+                else pure i
+          )
+          (zip v [(1 :: Int) ..])
 
 fetchComment :: (MonadHttp m, MonadThrow m) => Cli -> SourceType -> Text -> m [Comment]
 fetchComment cli typ sid =

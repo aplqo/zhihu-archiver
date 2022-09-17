@@ -88,7 +88,7 @@ instance Item Collection where
         mempty
 
 instance Commentable Collection where
-  commentCount = colCommentCount
+  hasComment a = colCommentCount a /= 0
   attachComment cli a =
     (\c -> a {colComment = c})
       <$> fetchComment (pushHeader "comment" cli) StCollection (T.pack (show (colId a)))
