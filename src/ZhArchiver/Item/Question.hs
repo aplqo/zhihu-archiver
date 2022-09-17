@@ -12,16 +12,17 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Language.Haskell.TH
 import Network.HTTP.Req
 import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
-import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer
+import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri (apiPath, httpsURI)
 import ZhArchiver.Request.Zse96V3
@@ -58,33 +59,18 @@ instance Item Question where
 
 instance ZhData Question where
   parseRaw (Raw v) =
-    withObject
-      "question"
-      ( \o -> do
-          qid <- o .: "id"
-          author <- o .: "author" >>= parseAuthor
-          created <- o .: "created" >>= parseTime
-          updated <- o .: "updated_time" >>= parseTime
-          content <-
-            ( \d ->
-                if T.null d
-                  then Nothing
-                  else Just (Content {contHtml = d, contImages = emptyImgMap})
-              )
-              <$> o .: "detail"
-          ccnt <- o .: "comment_count"
-          return
-            Question
-              { qId = qid,
-                qAuthor = author,
-                qCreated = created,
-                qUpdated = updated,
-                qContent = content,
-                qCommentCount = ccnt,
-                qComments = [],
-                qRawData = v
-              }
-      )
+    $( rawParser
+         'Question
+         [ ('qId, FoParse "id" PoStock),
+           ('qAuthor, FoParse "author" poAuthorMaybe),
+           ('qCreated, FoParse "created" poTime),
+           ('qUpdated, FoParse "updated_time" poTime),
+           ('qContent, FoParse "content" poContentMaybe),
+           ('qCommentCount, FoParse "comment_count" PoStock),
+           ('qComments, FoConst (listE [])),
+           ('qRawData, FoRaw)
+         ]
+     )
       v
 
 instance Commentable Question where

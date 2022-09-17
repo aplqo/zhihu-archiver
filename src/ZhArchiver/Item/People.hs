@@ -13,6 +13,8 @@ import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Item
+import ZhArchiver.RawParser.TH
+import ZhArchiver.RawParser.Util
 
 data People = People
   { pId, pUrlToken :: Text,
@@ -44,33 +46,16 @@ instance Item People where
 
 instance ZhData People where
   parseRaw (Raw v) =
-    withObject
-      "people"
-      ( \o ->
-          do
-            pid <- o .: "id"
-            utoken <- o .: "url_token"
-            name <- o .: "name"
-            headline <- (\t -> if T.null t then Nothing else Just t) <$> o .: "headline"
-            descrip <-
-              ( \t ->
-                  if T.null t
-                    then Nothing
-                    else Just Content {contHtml = t, contImages = emptyImgMap}
-                )
-                <$> o .: "description"
-            avatar <- o .: "avatar_url"
-            cover <- (\t -> if T.null t then Nothing else Just Image {imgUrl = t, imgRef = Nothing}) <$> o .: "cover_url"
-            return
-              People
-                { pId = pid,
-                  pUrlToken = utoken,
-                  pName = name,
-                  pHeadline = headline,
-                  pDescription = descrip,
-                  pAvatar = Image {imgUrl = avatar, imgRef = Nothing},
-                  pCover = cover,
-                  pRawData = v
-                }
-      )
+    $( rawParser
+         'People
+         [ ('pId, FoParse "id" PoStock),
+           ('pUrlToken, FoParse "url_token" PoStock),
+           ('pName, FoParse "name" PoStock),
+           ('pHeadline, FoParse "headline" (PoMap [|unlessMaybe T.null|])),
+           ('pDescription, FoParse "description" poContentMaybe),
+           ('pAvatar, FoParse "avatar_url" poImage),
+           ('pCover, FoParse "cover_url" poImageMaybe),
+           ('pRawData, FoRaw)
+         ]
+     )
       v

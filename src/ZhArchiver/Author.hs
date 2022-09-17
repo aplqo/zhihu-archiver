@@ -1,6 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module ZhArchiver.Author (Author (..), parseAuthor) where
+module ZhArchiver.Author
+  ( Author (..),
+    parseAuthor,
+    parseAuthorMaybe,
+    poAuthor,
+    poAuthorMaybe,
+  )
+where
 
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
@@ -8,7 +15,9 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import ZhArchiver.Image
-import ZhArchiver.Image.TH
+import ZhArchiver.Image.TH (deriveHasImage)
+import ZhArchiver.RawParser.TH
+import ZhArchiver.RawParser.Util
 
 data Author = Author
   { auId, auUrlToken, auName, auHeadline :: Text,
@@ -20,27 +29,23 @@ deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''Author
 
 deriveHasImage ''Author ['auAvatar]
 
-parseAuthor :: JSON.Value -> Parser (Maybe Author)
+parseAuthor :: JSON.Value -> Parser Author
 parseAuthor =
-  withObject
-    "author"
-    ( \o -> do
-        uid <- o .: "id"
-        if uid == "0" -- anonymous
-          then return Nothing
-          else do
-            uToken <- o .: "url_token"
-            name <- o .: "name"
-            headline <- o .: "headline"
-            avatarUrl <- o .: "avatar_url"
-            return
-              ( Just
-                  Author
-                    { auId = uid,
-                      auUrlToken = uToken,
-                      auName = name,
-                      auHeadline = headline,
-                      auAvatar = Image {imgUrl = avatarUrl, imgRef = Nothing}
-                    }
-              )
-    )
+  $( rawParser
+       'Author
+       [ ('auId, FoParse "id" PoStock),
+         ('auUrlToken, FoParse "url_token" PoStock),
+         ('auName, FoParse "name" PoStock),
+         ('auHeadline, FoParse "headline" PoStock),
+         ('auAvatar, FoParse "avatar_url" poImage)
+       ]
+   )
+
+parseAuthorMaybe :: JSON.Value -> Parser (Maybe Author)
+parseAuthorMaybe = fmap (unlessMaybe ((== "0") . auId)) . parseAuthor
+
+poAuthor :: ParseOpt
+poAuthor = PoBind [|parseAuthor|]
+
+poAuthorMaybe :: ParseOpt
+poAuthorMaybe = PoBind [|parseAuthorMaybe|]

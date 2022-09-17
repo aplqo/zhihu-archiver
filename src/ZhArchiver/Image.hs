@@ -7,6 +7,8 @@
 module ZhArchiver.Image
   ( ImgRef,
     Image (..),
+    poImage,
+    poImageMaybe,
     ImgMap,
     emptyImgMap,
     FileMap,
@@ -45,6 +47,8 @@ import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
 import Text.URI
+import ZhArchiver.RawParser.TH
+import ZhArchiver.RawParser.Util
 
 newtype ImgDigest = ImgDigest (Digest SHA256)
   deriving newtype (Show)
@@ -78,6 +82,15 @@ data Image = Image
   deriving (Eq, Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Image
+
+imgFromUrl :: Text -> Image
+imgFromUrl u = Image {imgUrl = u, imgRef = Nothing}
+
+poImage :: ParseOpt
+poImage = PoMap [|imgFromUrl|]
+
+poImageMaybe :: ParseOpt
+poImageMaybe = PoMap [|appUnless T.null imgFromUrl|]
 
 -- | map from url to (type, hash) (sha256)
 newtype ImgMap = ImgHash (HashMap Text ImgRef)

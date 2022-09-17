@@ -9,16 +9,17 @@ import Data.Aeson
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Int (Int64)
-import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Language.Haskell.TH (listE)
 import Network.HTTP.Req
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
-import ZhArchiver.Image.TH
+import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
+import ZhArchiver.RawParser.TH
 import ZhArchiver.Types
 
 newtype ArtId = ArtId Int
@@ -55,42 +56,23 @@ instance Item Article where
 
 instance ZhData Article where
   parseRaw (Raw v) =
-    withObject
-      "article"
-      ( \o -> do
-          aid <- o .: "id"
-          title <- o .: "title"
-          image <- o .: "image_url" >>= parseImage
-          titleImg <- o .: "title_image" >>= parseImage
-          author <- fromJust <$> (o .: "author" >>= parseAuthor)
-          create <- o .: "created" >>= parseTime
-          update <- o .: "updated" >>= parseTime
-          vote <- o .: "voteup_count"
-          content <- o .: "content"
-          ccnt <- o .: "comment_count"
-          return
-            Article
-              { artId = aid,
-                artTitle = title,
-                artImage = image,
-                artTitleImage = titleImg,
-                artAuthor = author,
-                artCreate = create,
-                artUpdate = update,
-                artVote = vote,
-                artContent = Content {contHtml = content, contImages = emptyImgMap},
-                artCommentCount = ccnt,
-                artComment = [],
-                artRawData = v
-              }
-      )
+    $( rawParser
+         'Article
+         [ ('artId, foStock "id"),
+           ('artTitle, foStock "title"),
+           ('artImage, FoParse "image_url" poImageMaybe),
+           ('artTitleImage, FoParse "title_image" poImageMaybe),
+           ('artAuthor, FoParse "author" poAuthor),
+           ('artCreate, FoParse "created" poTime),
+           ('artUpdate, FoParse "updated" poTime),
+           ('artVote, foStock "voteup_content"),
+           ('artContent, FoParse "content" poContent),
+           ('artCommentCount, foStock "comment_count"),
+           ('artComment, FoConst (listE [])),
+           ('artRawData, FoRaw)
+         ]
+     )
       v
-    where
-      parseImage va =
-        ( \u ->
-            if T.null u then Nothing else Just Image {imgUrl = u, imgRef = Nothing}
-        )
-          <$> parseJSON va
 
 instance Commentable Article where
   commentCount = artCommentCount

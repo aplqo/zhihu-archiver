@@ -13,11 +13,10 @@ import Control.Monad.Catch (MonadThrow)
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
-import Data.Aeson.Types hiding (parse)
+import Data.Aeson.Types (parseMaybe)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.Maybe
+import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Network.HTTP.Req
 import Text.URI.QQ (pathPiece)
@@ -25,6 +24,7 @@ import ZhArchiver.Author
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH
+import ZhArchiver.RawParser.Util
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types
@@ -93,8 +93,8 @@ parseRawComment =
             "comment body"
             ( \o -> do
                 cid <- o .: "id"
-                author <- o .: "author" >>= parseAuthor
-                created <- o .: "created_time" >>= parseTime
+                author <- o .: "author" >>= parseAuthorMaybe
+                created <- convertTime <$> (o .: "created_time")
                 cont <-
                   o .: "is_delete" >>= \del ->
                     if del
@@ -107,8 +107,7 @@ parseRawComment =
                 disliked <- o .: "dislike_count"
 
                 reply <-
-                  (\rId -> if rId == "0" then Nothing else Just rId)
-                    <$> o .: "reply_comment_id"
+                  unlessMaybe (== "0") <$> o .: "reply_comment_id"
 
                 childC <- o .: "child_comment_count"
 

@@ -39,6 +39,8 @@ library
       ZhArchiver.Item.People
       ZhArchiver.Item.Question
       ZhArchiver.People.API
+      ZhArchiver.RawParser.TH
+      ZhArchiver.RawParser.Util
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri
       ZhArchiver.Request.Zse96V3
