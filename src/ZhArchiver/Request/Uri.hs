@@ -4,7 +4,7 @@
 
 module ZhArchiver.Request.Uri where
 
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import Text.URI

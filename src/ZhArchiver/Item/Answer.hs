@@ -18,7 +18,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Item
-import ZhArchiver.Item.Question (QId)
+import {-# SOURCE #-} ZhArchiver.Item.Question (QId)
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
 
