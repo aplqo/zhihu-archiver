@@ -36,6 +36,7 @@ library
       ZhArchiver.Item.AnsOrArt
       ZhArchiver.Item.Answer
       ZhArchiver.Item.Article
+      ZhArchiver.Item.Collection
       ZhArchiver.Item.Column
       ZhArchiver.Item.People
       ZhArchiver.Item.Question

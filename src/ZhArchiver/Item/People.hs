@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.People (People (..)) where
+module ZhArchiver.Item.People (People (..), CollType (..)) where
 
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
@@ -19,6 +19,7 @@ import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer (Answer)
 import ZhArchiver.Item.Article (Article)
+import ZhArchiver.Item.Collection
 import ZhArchiver.Item.Column
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
@@ -128,3 +129,29 @@ instance ItemContainer People PeopleColumn where
               sp
               [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
           )
+
+data CollType
+  = CotCreated
+  | CotLiked
+
+instance ItemContainer People Collection where
+  type ICOpt People Collection = CollType
+  type ICSigner People Collection = ()
+  fetchItemsRaw typ _ People {pId = uid} =
+    fmap Raw <$> case typ of
+      CotCreated ->
+        do
+          sp <- $(apiPath "people" "collections") uid
+          reqPaging
+            ( httpsURI
+                sp
+                [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time;data[*].creator.vip_info|]]
+            )
+      CotLiked ->
+        do
+          sp <- $(apiPath "members" "following-favlists") uid
+          reqPaging
+            ( httpsURI
+                sp
+                [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time|]]
+            )
