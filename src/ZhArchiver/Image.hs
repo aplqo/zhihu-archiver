@@ -45,6 +45,7 @@ import Network.HTTP.Types.Header
 import Network.Mime (defaultMimeMap)
 import System.Directory
 import System.FilePath
+import System.Posix.Files
 import Text.HTML.TagSoup
 import Text.URI
 import ZhArchiver.RawParser.TH
@@ -65,7 +66,7 @@ instance Hashable ImgDigest where
 
 data ImgRef = ImgRef
   { refImgType :: Maybe Text,
-    refImgExt :: Maybe Text,
+    refImgFile :: FilePath,
     refImgDigest :: ImgDigest
   }
   deriving (Eq, Show)
@@ -114,14 +115,16 @@ saveImgFiles pat (ImgFiles m) =
     >> withCurrentDirectory
       pat
       ( traverse_
-          ( \(ref, dat) ->
-              let baseName = show (refImgDigest ref)
-                  path = maybe baseName (addExtension baseName . T.unpack) (refImgExt ref)
-               in doesFileExist path
-                    >>= \e -> unless e (BS.writeFile path dat)
+          ( \(ImgRef {refImgFile = path}, dat) ->
+              doesFileExist path
+                >>= \e -> unless e $ do
+                  BS.writeFile path dat
+                  setFileMode path readonly
           )
           (HM.toList m)
       )
+  where
+    readonly = foldl1 unionFileModes [ownerReadMode, groupReadMode, otherReadMode]
 
 type ImgFetcher m v = StateT FileMap m v
 
@@ -151,11 +154,17 @@ getImage url =
               Right (hs, o) -> req GET hs NoReqBody bsResponse o
             let body = responseBody dat
                 hdr = responseHeader dat (original hContentType)
+                hsh = hash body
                 ref =
                   ImgRef
                     { refImgType = TE.decodeUtf8 <$> hdr,
-                      refImgExt = hdr >>= \v -> HM.lookup v mimeToExt,
-                      refImgDigest = ImgDigest (hash body)
+                      refImgFile =
+                        let baseName = show hsh
+                         in maybe
+                              baseName
+                              (addExtension baseName . T.unpack)
+                              (hdr >>= \v -> HM.lookup v mimeToExt),
+                      refImgDigest = ImgDigest hsh
                     }
              in do
                   modify (\(ImgFiles f) -> ImgFiles (HM.insert ref body f))
