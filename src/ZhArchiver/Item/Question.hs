@@ -82,8 +82,9 @@ instance Commentable Question where
 deriveHasImage ''Question ['qAuthor, 'qContent, 'qComments]
 
 instance ItemContainer Question Answer where
+  type ICOpt Question Answer = ()
   type ICSigner Question Answer = ZseState
-  fetchItemsRaw zs Question {qId = qid} =
+  fetchItemsRaw _ zs Question {qId = qid} =
     do
       p <- $(apiPath "questions" "answers") (T.pack (show qid))
       fmap Raw

@@ -71,8 +71,9 @@ instance ZhData People where
       v
 
 instance ItemContainer People Answer where
+  type ICOpt People Answer = ()
   type ICSigner People Answer = ZseState
-  fetchItemsRaw zs (People {pId = uid}) = do
+  fetchItemsRaw _ zs (People {pId = uid}) = do
     sp <- $(apiPath "members" "answers") uid
     fmap Raw
       <$> reqPagingSign
@@ -86,8 +87,9 @@ instance ItemContainer People Answer where
         (zse96 zs)
 
 instance ItemContainer People Article where
+  type ICOpt People Article = ()
   type ICSigner People Article = ZseState
-  fetchItemsRaw zs (People {pId = uid}) = do
+  fetchItemsRaw _ zs (People {pId = uid}) = do
     sp <- $(apiPath "members" "articles") uid
     fmap Raw
       <$> reqPagingSign
@@ -115,8 +117,9 @@ instance ZhData PeopleColumn where
       v
 
 instance ItemContainer People PeopleColumn where
+  type ICOpt People PeopleColumn = ()
   type ICSigner People PeopleColumn = ()
-  fetchItemsRaw _ (People {pId = uid}) =
+  fetchItemsRaw _ _ (People {pId = uid}) =
     do
       sp <- $(apiPath "members" "column-contributions") uid
       fmap Raw

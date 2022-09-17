@@ -26,5 +26,6 @@ class (ZhData a) => Item a where
   fetchRaw :: (MonadHttp m, MonadThrow m) => Signer a -> IId a -> m (RawData a)
 
 class (Item a, ZhData i) => ItemContainer a i where
+  type ICOpt a i
   type ICSigner a i
-  fetchItemsRaw :: (MonadHttp m, MonadThrow m) => ICSigner a i -> a -> m [RawData i]
+  fetchItemsRaw :: (MonadHttp m, MonadThrow m) => ICOpt a i -> ICSigner a i -> a -> m [RawData i]

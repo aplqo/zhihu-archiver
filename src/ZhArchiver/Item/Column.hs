@@ -67,10 +67,13 @@ instance ZhData Column where
       v
 
 instance ItemContainer Column AnsOrArt where
+  type ICOpt Column AnsOrArt = Bool
   type ICSigner Column AnsOrArt = ()
-  fetchItemsRaw _ Column {coId = cid} = do
-    sp1 <- $(apiPath "columns" "items") cid
-    sp2 <- $(apiPath "columns" "pinned-items") cid
-    r1 <- reqPaging (httpsURI sp1 [])
-    r2 <- reqPaging (httpsURI sp2 [])
-    return (Raw <$> (r1 ++ r2))
+  fetchItemsRaw pin _ Column {coId = cid} =
+    if pin
+      then do
+        sp1 <- $(apiPath "columns" "items") cid
+        fmap Raw <$> reqPaging (httpsURI sp1 [])
+      else do
+        sp2 <- $(apiPath "columns" "pinned-items") cid
+        fmap Raw <$> reqPaging (httpsURI sp2 [])
