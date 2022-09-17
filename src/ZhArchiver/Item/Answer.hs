@@ -54,6 +54,7 @@ instance Item Answer where
         ("include" =: ("content;comment_count;voteup_count" :: Text))
         (zse96 zs)
 
+instance ZhData Answer where
   parseRaw (Raw v) =
     withObject
       "answer"

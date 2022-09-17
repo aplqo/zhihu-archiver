@@ -42,6 +42,7 @@ instance Item People where
         jsonResponse
         ("include" =: ("allow_message,is_followed,is_following,is_org,is_blocking,employments,answer_count,follower_count,articles_count,gender,badge[?(type=best_answerer)].topics;description;cover_url" :: Text))
 
+instance ZhData People where
   parseRaw (Raw v) =
     withObject
       "people"

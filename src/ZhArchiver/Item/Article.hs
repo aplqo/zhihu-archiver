@@ -53,6 +53,7 @@ instance Item Article where
         jsonResponse
         mempty
 
+instance ZhData Article where
   parseRaw (Raw v) =
     withObject
       "article"

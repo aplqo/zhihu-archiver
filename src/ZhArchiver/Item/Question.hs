@@ -49,6 +49,7 @@ instance Item Question where
         ("include" =: ("author,description,is_anonymous;detail;comment_count;answer_count;excerpt" :: Text))
         (zse96 zs)
 
+instance ZhData Question where
   parseRaw (Raw v) =
     withObject
       "question"
