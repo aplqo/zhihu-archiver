@@ -9,6 +9,7 @@ module ZhArchiver.Progress
     showMessage,
     showProgress,
     endProgress,
+    putNewline,
   )
 where
 
@@ -81,7 +82,7 @@ showMessage :: Cli -> String -> IO ()
 showMessage c@(Cli {cliMultiline = m}) msg = do
   putStr clearLine
   showMsg c msg
-  when m $ putChar '\n'
+  when m putNewline
 
 showProgress :: Cli -> String -> IO ()
 showProgress c msg = do
@@ -90,4 +91,7 @@ showProgress c msg = do
   hFlush stdout
 
 endProgress :: Cli -> IO ()
-endProgress Cli {cliMultiline = m} = when m $ putChar '\n'
+endProgress Cli {cliMultiline = m} = when m putNewline
+
+putNewline :: IO ()
+putNewline = putChar '\n'
