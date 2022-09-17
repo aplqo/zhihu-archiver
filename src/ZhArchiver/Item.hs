@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -8,12 +9,14 @@ module ZhArchiver.Item
     ZhData (..),
     runParser,
     Item (..),
-    ItemContainer (..),
     fetchItems,
+    ItemContainer (..),
+    fetchChildItems,
   )
 where
 
 import Control.Monad.Catch
+import Control.Monad.IO.Class
 import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
 import Data.Aeson.Types
@@ -52,19 +55,30 @@ class (ZhData a) => Item a where
   type Signer a
   fetchRaw :: (MonadHttp m, MonadThrow m) => Signer a -> IId a -> m (RawData a)
 
+fetchItems :: (Item a, Show (IId a), MonadHttp m, MonadThrow m) => Cli -> Signer a -> [IId a] -> m [a]
+fetchItems cli s is =
+  let tot = length is
+   in traverse
+        ( \(i, idx) ->
+            liftIO (showProgress cli ("Fetching " ++ show i ++ " " ++ show idx ++ "/" ++ show tot))
+              >> (runParser <$> fetchRaw s i)
+        )
+        (zip is [(1 :: Int) ..])
+        <* liftIO (endProgress cli)
+
 class (Item a, ZhData i) => ItemContainer a i where
   type ICOpt a i
   type ICSigner a i
   fetchItemsRaw :: (MonadHttp m, MonadThrow m) => Cli -> ICOpt a i -> ICSigner a i -> a -> m [RawData i]
   saveItems :: FilePath -> ICOpt a i -> a -> [i] -> IO ()
 
-fetchItems ::
+fetchChildItems ::
   (ItemContainer a i, MonadHttp m, MonadThrow m, ShowId a) =>
   Cli ->
   ICOpt a i ->
   ICSigner a i ->
   a ->
   m [i]
-fetchItems cli opt sig v =
+fetchChildItems cli opt sig v =
   fmap runParser
     <$> fetchItemsRaw (pushHeader (showValId v) cli) opt sig v

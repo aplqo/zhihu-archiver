@@ -15,6 +15,7 @@ module ZhArchiver.Image
     emptyFileMap,
     saveImgFiles,
     ImgFetcher,
+    runImgFetcher,
     HasImage (..),
     getImage,
     getHtmlImages,
@@ -130,6 +131,9 @@ saveImgFiles pat (ImgFiles m) =
     readonly = foldl1 unionFileModes [ownerReadMode, groupReadMode, otherReadMode]
 
 type ImgFetcher m v = StateT FileMap m v
+
+runImgFetcher :: ImgFetcher m a -> m (a, FileMap)
+runImgFetcher f = runStateT f emptyFileMap
 
 class HasImage a where
   fetchImage :: (MonadHttp m, MonadCatch m) => Cli -> a -> ImgFetcher m a
