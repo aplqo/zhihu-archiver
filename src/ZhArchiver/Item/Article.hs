@@ -19,6 +19,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Types
 
@@ -40,6 +41,10 @@ data Article = Article
   deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Article
+
+instance ShowId Article where
+  showType = const "article"
+  showId Article {artId = ArtId a} = show a
 
 instance Item Article where
   type IId Article = ArtId
@@ -76,6 +81,18 @@ instance ZhData Article where
 
 instance Commentable Article where
   commentCount = artCommentCount
-  attachComment a = (\c -> a {artComment = c}) <$> fetchComment StArticle (T.pack (show (artId a)))
+  attachComment cli a =
+    (\c -> a {artComment = c})
+      <$> fetchComment
+        (pushHeader "comments" cli)
+        StArticle
+        (T.pack (show (artId a)))
 
-deriveHasImage ''Article ['artAuthor, 'artImage, 'artTitleImage, 'artContent, 'artComment]
+deriveHasImage
+  ''Article
+  [ ('artAuthor, "author"),
+    ('artImage, "image"),
+    ('artTitleImage, "title_image"),
+    ('artContent, "content"),
+    ('artComment, "comment")
+  ]

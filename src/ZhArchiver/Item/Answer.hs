@@ -19,6 +19,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import {-# SOURCE #-} ZhArchiver.Item.Question (QId)
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
@@ -40,6 +41,10 @@ data Answer = Answer
   deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = tail} ''Answer
+
+instance ShowId Answer where
+  showType = const "answer"
+  showId Answer {aId = AId i} = show i
 
 instance Item Answer where
   type IId Answer = AId
@@ -84,8 +89,16 @@ instance ZhData Answer where
 
 instance Commentable Answer where
   commentCount = aCommentCount
-  attachComment a =
+  attachComment cli a =
     (\c -> a {aComment = c})
-      <$> fetchComment StAnswer (T.pack (show (aId a)))
+      <$> fetchComment
+        (pushHeader "comments" cli)
+        StAnswer
+        (T.pack (show (aId a)))
 
-deriveHasImage ''Answer ['aAuthor, 'aContent, 'aComment]
+deriveHasImage
+  ''Answer
+  [ ('aAuthor, "author"),
+    ('aContent, "content"),
+    ('aComment, "comment")
+  ]

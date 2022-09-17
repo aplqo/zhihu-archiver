@@ -9,6 +9,7 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Int (Int64)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Network.HTTP.Req
 import ZhArchiver.Author
 import ZhArchiver.Content
@@ -16,6 +17,7 @@ import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt (AnsOrArt)
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
@@ -34,7 +36,17 @@ data Column = Column
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''Column
 
-deriveHasImage ''Column ['coAuthor, 'coDescription, 'coIntro, 'coImage]
+deriveHasImage
+  ''Column
+  [ ('coAuthor, "author"),
+    ('coDescription, "description"),
+    ('coIntro, "intro"),
+    ('coImage, "image")
+  ]
+
+instance ShowId Column where
+  showType = const "column"
+  showId Column {coId = c} = T.unpack c
 
 instance Item Column where
   type IId Column = Text
@@ -69,11 +81,11 @@ instance ZhData Column where
 instance ItemContainer Column AnsOrArt where
   type ICOpt Column AnsOrArt = Bool
   type ICSigner Column AnsOrArt = ()
-  fetchItemsRaw pin _ Column {coId = cid} =
+  fetchItemsRaw cli pin _ Column {coId = cid} =
     if pin
       then do
         sp1 <- $(apiPath "columns" "items") cid
-        fmap Raw <$> reqPaging (httpsURI sp1 [])
+        fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp1 [])
       else do
         sp2 <- $(apiPath "columns" "pinned-items") cid
-        fmap Raw <$> reqPaging (httpsURI sp2 [])
+        fmap Raw <$> reqPaging (pushHeader "pinned-item" cli) (httpsURI sp2 [])

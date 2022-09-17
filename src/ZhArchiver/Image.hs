@@ -22,6 +22,7 @@ module ZhArchiver.Image
 where
 
 import Control.Monad.Catch
+import Control.Monad.IO.Class
 import Control.Monad.State
 import Crypto.Hash
 import Data.Aeson hiding (String, Value)
@@ -36,6 +37,7 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.Hashable (Hashable (hashWithSalt))
 import qualified Data.Map.Strict as M
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -48,6 +50,7 @@ import System.FilePath
 import System.Posix.Files
 import Text.HTML.TagSoup
 import Text.URI
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 
@@ -129,16 +132,26 @@ saveImgFiles pat (ImgFiles m) =
 type ImgFetcher m v = StateT FileMap m v
 
 class HasImage a where
-  fetchImage :: (MonadHttp m, MonadCatch m) => a -> ImgFetcher m a
+  fetchImage :: (MonadHttp m, MonadCatch m) => Cli -> a -> ImgFetcher m a
 
 instance HasImage Image where
-  fetchImage im = (\r -> im {imgRef = r}) <$> getImage (imgUrl im)
+  fetchImage cli im =
+    (\r -> im {imgRef = r}) <$> getImage (imgUrl im)
+      <* liftIO (showProgress cli "Download image file" <* endProgress cli)
 
 instance (HasImage a) => HasImage (Maybe a) where
-  fetchImage = traverse fetchImage
+  fetchImage cli = traverse (fetchImage cli)
 
-instance (HasImage a) => HasImage [a] where
-  fetchImage = traverse fetchImage
+instance (HasImage a, ShowId a) => HasImage [a] where
+  fetchImage cli a =
+    let total = length a
+     in traverse
+          ( \(i, v) ->
+              fetchImage
+                (appendHeader (concat [" ", showId i, " ", show v, "/", show total]) cli)
+                i
+          )
+          (zip a [(1 :: Int) ..])
 
 mimeToExt :: HashMap ByteString Text
 mimeToExt = (HM.fromList . fmap swap . M.toList) defaultMimeMap
@@ -173,21 +186,26 @@ getImage url =
         (const (pure Nothing))
     Nothing -> pure Nothing
 
-getHtmlImages :: (MonadHttp m, MonadCatch m) => Text -> ImgFetcher m ImgMap
-getHtmlImages htm =
+getHtmlImages :: (MonadHttp m, MonadCatch m) => Cli -> Text -> ImgFetcher m ImgMap
+getHtmlImages cli htm =
   let imgs = getSrc htm
-   in ImgHash . HM.fromList . collect
-        <$> traverse (\url -> fmap (url,) <$> getImage url) imgs
+      num = length imgs
+   in ImgHash . HM.fromList . catMaybes
+        <$> ( traverse
+                ( \(url, idx) ->
+                    fmap (url,)
+                      <$> ( liftIO (showProgress cli ("image " ++ show idx ++ "/" ++ show num))
+                              *> getImage url
+                          )
+                )
+                (zip imgs [(1 :: Int) ..])
+                <* liftIO (unless (null imgs) $ endProgress cli)
+            )
   where
-    collect :: [Maybe a] -> [a]
-    collect =
-      foldr (\i c -> maybe c (: c) i) []
-
     getSrc =
-      collect
-        . fmap
-          ( \case
-              TagOpen "img" attr -> lookup "src" attr
-              _ -> Nothing
-          )
+      mapMaybe
+        ( \case
+            TagOpen "img" attr -> lookup "src" attr
+            _ -> Nothing
+        )
         . parseTags

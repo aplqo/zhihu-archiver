@@ -18,6 +18,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
@@ -37,7 +38,16 @@ data Collection = Collection
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Collection
 
-deriveHasImage ''Collection ['colDescription, 'colCreator]
+deriveHasImage
+  ''Collection
+  [ ('colDescription, "description"),
+    ('colCreator, "creator"),
+    ('colComment, "comment")
+  ]
+
+instance ShowId Collection where
+  showType = const "collection"
+  showId Collection {colId = i} = show i
 
 instance ZhData Collection where
   parseRaw (Raw v) =
@@ -79,13 +89,13 @@ instance Item Collection where
 
 instance Commentable Collection where
   commentCount = colCommentCount
-  attachComment a =
+  attachComment cli a =
     (\c -> a {colComment = c})
-      <$> fetchComment StCollection (T.pack (show (colId a)))
+      <$> fetchComment (pushHeader "comment" cli) StCollection (T.pack (show (colId a)))
 
 instance ItemContainer Collection AnsOrArt where
   type ICOpt Collection AnsOrArt = ()
   type ICSigner Collection AnsOrArt = ()
-  fetchItemsRaw _ _ Collection {colId = cid} = do
+  fetchItemsRaw cli _ _ Collection {colId = cid} = do
     sp <- $(apiPath "collections" "items") (T.pack (show cid))
-    fmap Raw <$> reqPaging (httpsURI sp [])
+    fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp [])

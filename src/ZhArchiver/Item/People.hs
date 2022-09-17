@@ -21,6 +21,7 @@ import ZhArchiver.Item.Answer (Answer)
 import ZhArchiver.Item.Article (Article)
 import ZhArchiver.Item.Collection
 import ZhArchiver.Item.Column
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 import ZhArchiver.Request.Paging
@@ -40,7 +41,16 @@ data People = People
 
 deriveJSON defaultOptions {fieldLabelModifier = tail} ''People
 
-deriveHasImage ''People ['pDescription, 'pAvatar, 'pCover]
+deriveHasImage
+  ''People
+  [ ('pDescription, "description"),
+    ('pAvatar, "avatar"),
+    ('pCover, "cover")
+  ]
+
+instance ShowId People where
+  showType = const "people"
+  showId People {pUrlToken = t} = T.unpack t
 
 instance Item People where
   type IId People = Text
@@ -74,10 +84,11 @@ instance ZhData People where
 instance ItemContainer People Answer where
   type ICOpt People Answer = ()
   type ICSigner People Answer = ZseState
-  fetchItemsRaw _ zs (People {pId = uid}) = do
+  fetchItemsRaw cli _ zs (People {pId = uid}) = do
     sp <- $(apiPath "members" "answers") uid
     fmap Raw
       <$> reqPagingSign
+        (pushHeader "answer" cli)
         ( httpsURI
             sp
             [ QueryParam [queryKey|include|] [queryValue|data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,mark_infos,created_time,updated_time,review_info,excerpt,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp,is_recognized;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;data[*].author.vip_info;data[*].question.has_publishing_draft,relationship|],
@@ -90,10 +101,11 @@ instance ItemContainer People Answer where
 instance ItemContainer People Article where
   type ICOpt People Article = ()
   type ICSigner People Article = ZseState
-  fetchItemsRaw _ zs (People {pId = uid}) = do
+  fetchItemsRaw cli _ zs (People {pId = uid}) = do
     sp <- $(apiPath "members" "articles") uid
     fmap Raw
       <$> reqPagingSign
+        (pushHeader "article" cli)
         ( httpsURI
             sp
             [QueryParam [queryKey|include|] [queryValue|data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;data[*].author.vip_info;|]]
@@ -105,7 +117,7 @@ data PeopleColumn = PCol {pcColumn :: Column, pcRawData :: JSON.Value}
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''PeopleColumn
 
-deriveHasImage ''PeopleColumn ['pcColumn]
+deriveHasImage ''PeopleColumn [('pcColumn, "column")]
 
 instance ZhData PeopleColumn where
   parseRaw (Raw v) =
@@ -120,11 +132,12 @@ instance ZhData PeopleColumn where
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
   type ICSigner People PeopleColumn = ()
-  fetchItemsRaw _ _ (People {pId = uid}) =
+  fetchItemsRaw cli _ _ (People {pId = uid}) =
     do
       sp <- $(apiPath "members" "column-contributions") uid
       fmap Raw
         <$> reqPaging
+          (pushHeader "column" cli)
           ( httpsURI
               sp
               [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
@@ -137,12 +150,13 @@ data CollType
 instance ItemContainer People Collection where
   type ICOpt People Collection = CollType
   type ICSigner People Collection = ()
-  fetchItemsRaw typ _ People {pId = uid} =
+  fetchItemsRaw cli typ _ People {pId = uid} =
     fmap Raw <$> case typ of
       CotCreated ->
         do
           sp <- $(apiPath "people" "collections") uid
           reqPaging
+            (pushHeader "collection" cli)
             ( httpsURI
                 sp
                 [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time;data[*].creator.vip_info|]]
@@ -151,6 +165,7 @@ instance ItemContainer People Collection where
         do
           sp <- $(apiPath "members" "following-favlists") uid
           reqPaging
+            (pushHeader "following-collection" cli)
             ( httpsURI
                 sp
                 [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time|]]

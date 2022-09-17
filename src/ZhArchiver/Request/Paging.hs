@@ -11,11 +11,10 @@ import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
-import GHC.IO.Handle (hFlush)
-import GHC.IO.Handle.FD (stdout)
 import Network.HTTP.Client (Request)
 import Network.HTTP.Req hiding (https)
 import Text.URI
+import ZhArchiver.Progress
 import ZhArchiver.Request.Uri
 
 data Paging = Paging
@@ -43,8 +42,8 @@ instance FromJSON APIResponse where
           return (APIResponse res p)
       )
 
-reqPagingSign :: MonadHttp m => URI -> (Request -> m Request) -> m [JSON.Value]
-reqPagingSign u sig = iter (1 :: Int) 0 u
+reqPagingSign :: MonadHttp m => Cli -> URI -> (Request -> m Request) -> m [JSON.Value]
+reqPagingSign cli u sig = iter (1 :: Int) 0 u
   where
     fixup url = if T.last url == '&' then T.dropEnd 1 url else url
     iter page cnt uri =
@@ -55,14 +54,14 @@ reqPagingSign u sig = iter (1 :: Int) 0 u
             <$> reqCb GET url NoReqBody (jsonResponse @APIResponse) op sig
 
         let l = cnt + length (rawResult p)
-        liftIO $ do
-          putStr
-            (concat ["\ESC[2K\ESC[G" {- clear line -}, "Got page ", show page, ", ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals), " items"])
-          hFlush stdout
+        liftIO $
+          showProgress
+            cli
+            (concat ["page ", show page, "  item ", show l, maybe "" (\t -> "/" ++ show t) (paging p >>= totals)])
 
         case paging p of
           Just pa | not (is_end pa) -> (rawResult p ++) <$> (liftIO (mkURI (fixup $ next pa)) >>= iter (page + 1) l)
-          _ -> liftIO (putChar '\n') >> return (rawResult p)
+          _ -> liftIO (endProgress cli) >> return (rawResult p)
 
-reqPaging :: MonadHttp m => URI -> m [JSON.Value]
-reqPaging uri = reqPagingSign uri pure
+reqPaging :: MonadHttp m => Cli -> URI -> m [JSON.Value]
+reqPaging cli uri = reqPagingSign cli uri pure

@@ -27,7 +27,7 @@ data Author = Author
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''Author
 
-deriveHasImage ''Author ['auAvatar]
+deriveHasImage ''Author [('auAvatar, "avatar")]
 
 parseAuthor :: JSON.Value -> Parser Author
 parseAuthor =

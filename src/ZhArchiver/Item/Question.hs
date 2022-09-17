@@ -22,6 +22,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri (apiPath, httpsURI)
@@ -43,6 +44,10 @@ data Question = Question
   deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = tail} ''Question
+
+instance ShowId Question where
+  showType = const "question"
+  showId Question {qId = QId q} = show q
 
 instance Item Question where
   type IId Question = QId
@@ -75,20 +80,21 @@ instance ZhData Question where
 
 instance Commentable Question where
   commentCount = qCommentCount
-  attachComment v =
+  attachComment cli v =
     (\c -> v {qComments = c})
-      <$> fetchComment StQuestion (T.pack (show (qId v)))
+      <$> fetchComment (pushHeader "comment" cli) StQuestion (T.pack (show (qId v)))
 
-deriveHasImage ''Question ['qAuthor, 'qContent, 'qComments]
+deriveHasImage ''Question [('qAuthor, "author"), ('qContent, "content"), ('qComments, "comments")]
 
 instance ItemContainer Question Answer where
   type ICOpt Question Answer = ()
   type ICSigner Question Answer = ZseState
-  fetchItemsRaw _ zs Question {qId = qid} =
+  fetchItemsRaw cli _ zs Question {qId = qid} =
     do
       p <- $(apiPath "questions" "answers") (T.pack (show qid))
       fmap Raw
         <$> reqPagingSign
+          (pushHeader "answer" cli)
           ( httpsURI
               p
               [QueryParam [queryKey|include|] [queryValue|data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,is_sticky,collapsed_by,suggest_edit,comment_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,relevant_info,question,excerpt,is_labeled,paid_info,paid_info_content,reaction_instruction,relationship.is_authorized,is_author,voting,is_thanked,is_nothelp,is_recognized;data[*].mark_infos[*].url;data[*].author.follower_count,vip_info,badge[*].topics;data[*].settings.table_of_content.enabled|]]

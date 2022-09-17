@@ -10,6 +10,7 @@ module ZhArchiver.Comment
 where
 
 import Control.Monad.Catch (MonadThrow)
+import Control.Monad.IO.Class
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
@@ -18,12 +19,14 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.Maybe (fromJust)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Network.HTTP.Req
 import Text.URI.QQ (pathPiece)
 import ZhArchiver.Author
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH
+import ZhArchiver.Progress
 import ZhArchiver.RawParser.Util
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
@@ -49,7 +52,16 @@ data Comment = Comment
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Comment
 
-deriveHasImage ''Comment ['comAuthor, 'comContent, 'comComment]
+instance ShowId Comment where
+  showType = const "comment"
+  showId Comment {comId = c} = T.unpack c
+
+deriveHasImage
+  ''Comment
+  [ ('comAuthor, "author"),
+    ('comContent, "content"),
+    ('comComment, "child_comment")
+  ]
 
 fetchCommentRaw :: MonadHttp m => Text -> m JSON.Value
 fetchCommentRaw cid =
@@ -61,8 +73,8 @@ fetchCommentRaw cid =
       jsonResponse
       mempty
 
-fetchRootCommentRaw :: (MonadHttp m, MonadThrow m) => SourceType -> Text -> m [JSON.Value]
-fetchRootCommentRaw st sid =
+fetchRootCommentRaw :: (MonadHttp m, MonadThrow m) => Cli -> SourceType -> Text -> m [JSON.Value]
+fetchRootCommentRaw cli st sid =
   do
     sp <-
       $(pathTemplate [F "api", F "v4", F "comment_v5", P, T, F "root_comment"])
@@ -73,15 +85,13 @@ fetchRootCommentRaw st sid =
             StQuestion -> [pathPiece|questions|]
         )
         sid
-    reqPaging
-      (httpsURI sp [])
+    reqPaging cli (httpsURI sp [])
 
-fetchChildCommentRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
-fetchChildCommentRaw sid =
+fetchChildCommentRaw :: (MonadHttp m, MonadThrow m) => Cli -> Text -> m [JSON.Value]
+fetchChildCommentRaw cli sid =
   do
     sp <- $(pathTemplate [F "api", F "v4", F "comment_v5", F "comment", T, F "child_comment"]) sid
-    reqPaging
-      (httpsURI sp [])
+    reqPaging cli (httpsURI sp [])
 
 -- | returns (body, reply, child)
 parseRawComment :: JSON.Value -> (Comment, Maybe Text, Int)
@@ -130,10 +140,11 @@ parseRawComment =
             v
       )
 
-fetchChildComment :: (MonadHttp m, MonadThrow m) => Text -> m [(Comment, Maybe Text)]
-fetchChildComment cid = do
-  raw <- fmap parse <$> fetchChildCommentRaw cid
-  del <- complete (HS.fromList (cid : fmap (comId . fst) raw)) (parents raw)
+fetchChildComment :: (MonadHttp m, MonadThrow m) => Cli -> Text -> m [(Comment, Maybe Text)]
+fetchChildComment cli cid = do
+  raw <- fmap parse <$> fetchChildCommentRaw (pushHeader "child_comment" cli) cid
+  liftIO $ showProgress cli "Getting missing comment"
+  del <- complete (HS.fromList (cid : fmap (comId . fst) raw)) (parents raw) <* liftIO (endProgress cli)
   return (del ++ raw)
   where
     parse v =
@@ -143,12 +154,20 @@ fetchChildComment cid = do
     parents :: [(Comment, Maybe Text)] -> [Text]
     parents = foldr (\(_, i) c -> maybe c (: c) i) []
 
+    comCli = pushHeader "missing_comment" cli
+
     complete has expect =
       let missing = filter (\i -> not (HS.member i has)) expect
        in if null missing
             then return []
             else do
-              items <- traverse (fmap parse . fetchCommentRaw) missing
+              items <-
+                traverse
+                  ( \i ->
+                      liftIO (showProgress comCli ("Getting comment " ++ T.unpack i))
+                        *> (fmap parse . fetchCommentRaw) i
+                  )
+                  missing
               par <- complete (HS.union has (HS.fromList missing)) (parents items)
               return (items ++ par)
 
@@ -173,17 +192,21 @@ buildCommentTree cs =
 
 class Commentable a where
   commentCount :: a -> Int
-  attachComment :: (MonadHttp m, MonadThrow m) => a -> m a
+  attachComment :: (MonadHttp m, MonadThrow m) => Cli -> a -> m a
 
-fetchComment :: (MonadHttp m, MonadThrow m) => SourceType -> Text -> m [Comment]
-fetchComment typ sid =
+fetchComment :: (MonadHttp m, MonadThrow m) => Cli -> SourceType -> Text -> m [Comment]
+fetchComment cli typ sid =
   buildCommentTree . concat
-    <$> ( fetchRootCommentRaw typ sid
+    <$> ( fetchRootCommentRaw (pushHeader "root_comment" cli) typ sid
             >>= traverse
               ( \i ->
                   let (c, f, cnt) = parseRawComment i
                    in if cnt == 0
                         then pure [(c, f)]
-                        else ((c, f) :) <$> fetchChildComment (comId c)
+                        else
+                          ((c, f) :)
+                            <$> fetchChildComment
+                              (pushHeader (showValId c) cli)
+                              (comId c)
               )
         )

@@ -32,14 +32,14 @@ instance ZhData AnsOrArt where
       v
 
 instance HasImage AnsOrArt where
-  fetchImage a =
+  fetchImage cli a =
     case a of
-      AoaArticle ar -> AoaArticle <$> fetchImage ar
-      AoaAnswer an -> AoaAnswer <$> fetchImage an
+      AoaArticle ar -> AoaArticle <$> fetchImage cli ar
+      AoaAnswer an -> AoaAnswer <$> fetchImage cli an
 
 instance Commentable AnsOrArt where
   commentCount (AoaArticle a) = commentCount a
   commentCount (AoaAnswer a) = commentCount a
 
-  attachComment (AoaArticle a) = AoaArticle <$> attachComment a
-  attachComment (AoaAnswer a) = AoaAnswer <$> attachComment a
+  attachComment cli (AoaArticle a) = AoaArticle <$> attachComment cli a
+  attachComment cli (AoaAnswer a) = AoaAnswer <$> attachComment cli a

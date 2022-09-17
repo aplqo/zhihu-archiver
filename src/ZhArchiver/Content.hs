@@ -39,9 +39,9 @@ data Content = Content
 deriveJSON defaultOptions {fieldLabelModifier = drop 4} ''Content
 
 instance HasImage Content where
-  fetchImage c =
+  fetchImage cli c =
     (\im -> c {contImages = im})
-      <$> getHtmlImages (htmlText (contHtml c))
+      <$> getHtmlImages cli (htmlText (contHtml c))
 
 fromHtml :: Text -> Content
 fromHtml u = Content {contHtml = Html u, contImages = emptyImgMap}
