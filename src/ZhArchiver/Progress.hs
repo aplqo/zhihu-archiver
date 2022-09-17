@@ -2,6 +2,8 @@ module ZhArchiver.Progress
   ( ShowId (..),
     showValId,
     Cli (..),
+    defaultCli,
+    cliWithHeader,
     pushHeader,
     appendHeader,
     showMessage,
@@ -19,6 +21,26 @@ data Cli = Cli
     cliMaxHeader, cliHeaderCnt :: Int,
     cliMsgHeader :: [String]
   }
+
+defaultCli :: Cli
+defaultCli =
+  Cli
+    { cliMultiline = False,
+      cliHeadTruncated = False,
+      cliMaxHeader = 10,
+      cliHeaderCnt = 0,
+      cliMsgHeader = []
+    }
+
+cliWithHeader :: String -> Cli
+cliWithHeader h =
+  Cli
+    { cliMultiline = False,
+      cliHeadTruncated = False,
+      cliMaxHeader = 10,
+      cliHeaderCnt = 1,
+      cliMsgHeader = [h]
+    }
 
 class ShowId a where
   showId :: a -> String
