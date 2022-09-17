@@ -70,7 +70,7 @@ instance ZhData Question where
            ('qAuthor, FoParse "author" poAuthorMaybe),
            ('qCreated, FoParse "created" poTime),
            ('qUpdated, FoParse "updated_time" poTime),
-           ('qContent, FoParse "content" poContentMaybe),
+           ('qContent, FoParse "detail" poContentMaybe),
            ('qCommentCount, FoParse "comment_count" PoStock),
            ('qComments, FoConst (listE [])),
            ('qRawData, FoRaw)
