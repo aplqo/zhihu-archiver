@@ -28,14 +28,15 @@ library
       Lib
       ZhArchiver.Author
       ZhArchiver.Collections.API
-      ZhArchiver.Column.API
       ZhArchiver.Comment
       ZhArchiver.Content
       ZhArchiver.Image
       ZhArchiver.Image.TH
       ZhArchiver.Item
+      ZhArchiver.Item.AnsOrArt
       ZhArchiver.Item.Answer
       ZhArchiver.Item.Article
+      ZhArchiver.Item.Column
       ZhArchiver.Item.People
       ZhArchiver.Item.Question
       ZhArchiver.People.API

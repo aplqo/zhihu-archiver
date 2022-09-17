@@ -19,6 +19,7 @@ import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer (Answer)
 import ZhArchiver.Item.Article (Article)
+import ZhArchiver.Item.Column
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 import ZhArchiver.Request.Paging
@@ -95,3 +96,32 @@ instance ItemContainer People Article where
             [QueryParam [queryKey|include|] [queryValue|data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;data[*].author.vip_info;|]]
         )
         (zse96 zs)
+
+data PeopleColumn = PCol {pcColumn :: Column, pcRawData :: JSON.Value}
+  deriving (Show)
+
+deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''PeopleColumn
+
+deriveHasImage ''PeopleColumn ['pcColumn]
+
+instance ZhData PeopleColumn where
+  parseRaw (Raw v) =
+    $( rawParser
+         'PCol
+         [ ('pcColumn, FoParse "column" (PoBind [|fmap (\c -> c {coRawData = JSON.Null}) . parseRaw . Raw|])),
+           ('pcRawData, FoRaw)
+         ]
+     )
+      v
+
+instance ItemContainer People PeopleColumn where
+  type ICSigner People PeopleColumn = ()
+  fetchItemsRaw _ (People {pId = uid}) =
+    do
+      sp <- $(apiPath "members" "column-contributions") uid
+      fmap Raw
+        <$> reqPaging
+          ( httpsURI
+              sp
+              [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
+          )
