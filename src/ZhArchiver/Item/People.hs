@@ -24,6 +24,7 @@ import ZhArchiver.Item.Article
 import ZhArchiver.Item.Article.Parser
 import ZhArchiver.Item.Collection
 import ZhArchiver.Item.Column
+import ZhArchiver.Item.Pin
 import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
@@ -158,6 +159,26 @@ instance ItemContainer People PeopleColumn where
           )
   saveItems p _ s =
     traverse_ (saveData (p </> showId s </> "column"))
+
+instance ItemContainer People Pin where
+  type ICOpt People Pin = ()
+  type ICSigner People Pin = ()
+  fetchItemsRaw cli _ _ (People {pUrlToken = uid}) = do
+    sp <- $(apiPath "pins" "moments") uid
+    fmap Raw
+      <$> reqPaging
+        (pushHeader "pin" cli)
+        (httpsURI sp [])
+  parseRawChild _ (Raw c) =
+    withObject
+      "people.pin"
+      ( \o -> do
+          v <- o .: "target" >>= parseRaw . Raw
+          return v {pinRawData = c}
+      )
+      c
+  saveItems p _ s =
+    traverse_ (saveData (p </> showId s </> "pin"))
 
 data CollType
   = CotCreated

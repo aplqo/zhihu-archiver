@@ -7,6 +7,7 @@
 module ZhArchiver.Image
   ( ImgRef,
     Image (..),
+    imgFromUrl,
     poImage,
     poImageMaybe,
     ImgMap,

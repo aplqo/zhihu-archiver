@@ -38,6 +38,7 @@ data SourceType
   | StAnswer
   | StCollection
   | StQuestion
+  | StPin
 
 data Comment = Comment
   { comId :: Text,
@@ -84,6 +85,7 @@ fetchRootCommentRaw cli st sid =
             StAnswer -> [pathPiece|answers|]
             StCollection -> [pathPiece|collections|]
             StQuestion -> [pathPiece|questions|]
+            StPin -> [pathPiece|pins|]
         )
         sid
     reqPaging cli (httpsURI sp [])
@@ -207,6 +209,10 @@ instance (Commentable a, ShowId a) => Commentable [a] where
                 else pure i
           )
           (zip v [(1 :: Int) ..])
+
+instance (Commentable a) => Commentable (Maybe a) where
+  hasComment = maybe False hasComment
+  attachComment cli = traverse (attachComment cli)
 
 fetchComment :: (MonadHttp m, MonadThrow m) => Cli -> SourceType -> Text -> m [Comment]
 fetchComment cli typ sid =

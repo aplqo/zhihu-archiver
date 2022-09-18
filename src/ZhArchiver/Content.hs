@@ -7,6 +7,7 @@ module ZhArchiver.Content
     poHtml,
     poMaybeHtml,
     Content (..),
+    contentFromHtml,
     poContent,
     poContentMaybe,
   )
@@ -43,11 +44,11 @@ instance HasImage Content where
     (\im -> c {contImages = im})
       <$> getHtmlImages cli (htmlText (contHtml c))
 
-fromHtml :: Text -> Content
-fromHtml u = Content {contHtml = Html u, contImages = emptyImgMap}
+contentFromHtml :: Text -> Content
+contentFromHtml u = Content {contHtml = Html u, contImages = emptyImgMap}
 
 poContent :: ParseOpt
-poContent = PoMap [|fromHtml|]
+poContent = PoMap [|contentFromHtml|]
 
 poContentMaybe :: ParseOpt
-poContentMaybe = PoMap [|appUnless T.null fromHtml|]
+poContentMaybe = PoMap [|appUnless T.null contentFromHtml|]

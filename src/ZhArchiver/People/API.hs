@@ -24,8 +24,4 @@ getActivityRaw uid =
 
 getPinsRaw :: (MonadHttp m, MonadThrow m) => Text -> m [JSON.Value]
 getPinsRaw uid =
-  do
-    sp <- $(apiPath "pins" "moments") uid
-    reqPaging
-      (httpsURI sp [])
-      -}
+       -}

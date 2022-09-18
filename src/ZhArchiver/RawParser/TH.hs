@@ -23,6 +23,7 @@ data FieldOpt
   | FoParse String ParseOpt
   | FoParseMaybe String Bool ParseOpt
   | FoConst ExpQ
+  | FoCustom ExpQ
 
 foStock :: String -> FieldOpt
 foStock s = FoParse s PoStock
@@ -50,6 +51,10 @@ rawParser typ fs = do
   where
     procField orig _ (n, FoRaw) = pure (Nothing, Just (n, VarE orig))
     procField _ _ (n, FoConst e) = (\c -> (Nothing, Just (n, c))) <$> e
+    procField orig _ (n, FoCustom e) = do
+      recFld <- newName "recFld"
+      bnd <- (`AppE` VarE orig) <$> e
+      return (Just (BindS (VarP recFld) bnd), Just (n, VarE recFld))
     procField _ obj (n, o) =
       do
         recFld <- newName "recFld"
