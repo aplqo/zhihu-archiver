@@ -37,6 +37,8 @@ library:
   source-dirs: src
   default-extensions:
   - OverloadedStrings 
+  - ScopedTypeVariables
+  - TypeApplications 
   dependencies:
   - aeson >= 2.0 && < 3
   - aeson-pretty >= 0.8 && < 1

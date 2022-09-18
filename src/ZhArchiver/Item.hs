@@ -26,6 +26,7 @@ import Data.Aeson.Types
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable (traverse_)
 import Data.Type.Equality (type (~~))
+import Data.Typeable
 import Network.HTTP.Req
 import System.Directory
 import System.FilePath
@@ -91,9 +92,8 @@ class (Item a, ZhData i) => ItemContainer a i where
   parseRawChild _ = parseRaw
   saveItems :: FilePath -> ICOpt a i -> a -> [i] -> IO ()
   default saveItems :: (ShowId a, ShowId i, ICOpt a i ~~ ()) => FilePath -> ICOpt a i -> a -> [i] -> IO ()
-  saveItems _ () _ [] = pure ()
-  saveItems p () s v@(x : _) =
-    traverse_ (saveData (p </> showId s </> showType x)) v
+  saveItems p () s =
+    traverse_ (saveData (p </> showId s </> showType @i Proxy))
 
 fetchChildItems ::
   (ItemContainer a i, MonadHttp m, MonadThrow m, ShowId a) =>

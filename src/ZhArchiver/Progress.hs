@@ -15,6 +15,7 @@ where
 
 import Control.Monad
 import Data.Foldable
+import Data.Typeable
 import GHC.IO.Handle
 import GHC.IO.Handle.FD
 
@@ -36,11 +37,11 @@ cliWithHeader :: String -> Cli
 cliWithHeader h = pushHeader h defaultCli
 
 class ShowId a where
+  showType :: Proxy a -> String
   showId :: a -> String
-  showType :: a -> String
 
-showValId :: (ShowId a) => a -> String
-showValId a = showType a ++ " " ++ showId a
+showValId :: forall t. (ShowId t) => t -> String
+showValId a = showType (Proxy @t) ++ " " ++ showId a
 
 pushHeader :: String -> Cli -> Cli
 pushHeader s c@(Cli {cliMsgHeader = h}) = c {cliMsgHeader = (s, length s) : h}
