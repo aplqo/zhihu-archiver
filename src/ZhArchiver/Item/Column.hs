@@ -87,9 +87,9 @@ instance ItemContainer Column AnsOrArt where
     if pin
       then do
         sp2 <- $(apiPath "columns" "pinned-items") cid
-        fmap Raw <$> reqPaging (pushHeader "pinned-item" cli) (httpsURI sp2 [])
+        fmap Raw <$> reqPaging cli (httpsURI sp2 [])
       else do
         sp1 <- $(apiPath "columns" "items") cid
-        fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp1 [])
+        fmap Raw <$> reqPaging cli (httpsURI sp1 [])
   saveItems p op c =
     traverse_ (saveData (p </> showId c </> (if op then "pinned-item" else "item")))

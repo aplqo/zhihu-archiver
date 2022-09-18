@@ -96,7 +96,8 @@ class (Item a, ZhData i) => ItemContainer a i where
     traverse_ (saveData (p </> showId s </> showType @i Proxy))
 
 fetchChildItems ::
-  (ItemContainer a i, MonadHttp m, MonadThrow m, ShowId a) =>
+  forall a i m.
+  (ItemContainer a i, MonadHttp m, MonadThrow m) =>
   Cli ->
   ICOpt a i ->
   ICSigner a i ->
@@ -104,4 +105,4 @@ fetchChildItems ::
   m [i]
 fetchChildItems cli opt sig v =
   fmap (runParser (parseRawChild v))
-    <$> fetchItemsRaw (pushHeader (showId v) cli) opt sig v
+    <$> fetchItemsRaw cli opt sig v

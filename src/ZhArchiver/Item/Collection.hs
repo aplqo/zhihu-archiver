@@ -139,4 +139,4 @@ instance ItemContainer Collection ColItem where
   type ICSigner Collection ColItem = ()
   fetchItemsRaw cli _ _ Collection {colId = cid} = do
     sp <- $(apiPath "collections" "items") (T.pack (show cid))
-    fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp [])
+    fmap Raw <$> reqPaging cli (httpsURI sp [])

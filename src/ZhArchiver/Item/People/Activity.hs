@@ -159,7 +159,7 @@ instance ItemContainer People Activity where
       sp <- $(apiPath "web_moments" "activities") uid
       fmap Raw
         <$> reqPaging
-          (pushHeader "activity" cli)
+          cli
           (httpsURI sp [])
   saveItems p _ s =
     traverse_ (saveData (p </> showId s </> "activity"))
