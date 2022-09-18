@@ -8,10 +8,12 @@ module ZhArchiver.Image
   ( ImgRef,
     Image (..),
     imgFromUrl,
+    imgLocalPath,
     poImage,
     poImageMaybe,
     ImgMap,
     emptyImgMap,
+    lookupLocalPath,
     FileMap,
     emptyFileMap,
     saveImgFiles,
@@ -81,6 +83,9 @@ deriveJSON defaultOptions {fieldLabelModifier = drop 6} ''ImgRef
 instance Hashable ImgRef where
   hashWithSalt s i = hashWithSalt s (refImgType i, refImgDigest i)
 
+toLocalPath :: FilePath -> ImgRef -> Text
+toLocalPath store ImgRef {refImgFile = f} = T.pack (store </> f)
+
 data Image = Image
   { imgUrl :: Text,
     imgRef :: Maybe ImgRef
@@ -91,6 +96,9 @@ deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Image
 
 imgFromUrl :: Text -> Image
 imgFromUrl u = Image {imgUrl = u, imgRef = Nothing}
+
+imgLocalPath :: FilePath -> Image -> Text
+imgLocalPath p im = maybe (imgUrl im) (toLocalPath p) (imgRef im)
 
 poImage :: ParseOpt
 poImage = PoMap [|imgFromUrl|]
@@ -106,6 +114,9 @@ deriveJSON defaultOptions ''ImgMap
 
 emptyImgMap :: ImgMap
 emptyImgMap = ImgHash HM.empty
+
+lookupLocalPath :: FilePath -> ImgMap -> Text -> Text
+lookupLocalPath store (ImgHash mp) url = maybe url (toLocalPath store) (HM.lookup url mp)
 
 -- | map from (type, hash) to content
 newtype FileMap = ImgFiles (HashMap ImgRef ByteString)

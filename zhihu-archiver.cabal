@@ -66,6 +66,7 @@ library
     , case-insensitive >=1.2 && <2
     , containers
     , cryptonite >=0.20 && <1
+    , data-default
     , directory
     , exceptions
     , filepath
@@ -76,6 +77,8 @@ library
     , mime-types
     , modern-uri >=0.3 && <1
     , mtl
+    , pandoc
+    , pandoc-types
     , process >=1.6 && <2
     , req ==3.*
     , tagsoup

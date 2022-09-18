@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module ZhArchiver.Content
@@ -8,6 +9,7 @@ module ZhArchiver.Content
     poMaybeHtml,
     Content (..),
     contentFromHtml,
+    contentToPandoc,
     poContent,
     poContentMaybe,
   )
@@ -15,9 +17,18 @@ where
 
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
+import Data.Default
 import Data.Text (Text)
 import qualified Data.Text as T
+import Text.Pandoc
+import Text.Pandoc.Walk
 import ZhArchiver.Image
+  ( HasImage (..),
+    ImgMap,
+    emptyImgMap,
+    getHtmlImages,
+    lookupLocalPath,
+  )
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 
@@ -52,3 +63,13 @@ poContent = PoMap [|contentFromHtml|]
 
 poContentMaybe :: ParseOpt
 poContentMaybe = PoMap [|appUnless T.null contentFromHtml|]
+
+contentToPandoc :: PandocMonad m => FilePath -> Content -> m Pandoc
+contentToPandoc store Content {contHtml = Html h, contImages = img} =
+  walk (walk procImage :: Inline -> Inline) <$> readHtml def h
+  where
+    procImage :: Inline -> Inline
+    procImage =
+      \case
+        Image a t (url, tit) -> Image a t (lookupLocalPath store img url, tit)
+        a -> a

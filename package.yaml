@@ -63,6 +63,9 @@ library:
   - filepath
   - directory
   - unix
+  - pandoc
+  - pandoc-types
+  - data-default
 
 executables:
   zhihu-dl:
