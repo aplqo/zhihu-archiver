@@ -45,6 +45,7 @@ library
       ZhArchiver.Progress
       ZhArchiver.RawParser.TH
       ZhArchiver.RawParser.Util
+      ZhArchiver.REPL.Util
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri
       ZhArchiver.Request.Zse96V3

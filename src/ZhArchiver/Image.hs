@@ -142,7 +142,7 @@ saveImgFiles pat (ImgFiles m) =
   where
     readonly = foldl1 unionFileModes [ownerReadMode, groupReadMode, otherReadMode]
 
-type ImgFetcher m v = StateT FileMap m v
+type ImgFetcher m = StateT FileMap m
 
 runImgFetcher :: ImgFetcher m a -> m (a, FileMap)
 runImgFetcher f = runStateT f emptyFileMap

@@ -19,6 +19,13 @@ data AnsOrArt
   | AoaAnswer Answer
   deriving (Show)
 
+instance ShowId AnsOrArt where
+  showType = const "item"
+  showId v =
+    case v of
+      AoaArticle a -> "art_" ++ showId a
+      AoaAnswer a -> "ans_" ++ showId a
+
 deriveJSON defaultOptions {constructorTagModifier = drop 3} ''AnsOrArt
 
 instance ZhData AnsOrArt where

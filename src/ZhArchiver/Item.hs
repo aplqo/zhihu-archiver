@@ -104,4 +104,4 @@ fetchChildItems ::
   m [i]
 fetchChildItems cli opt sig v =
   fmap (runParser (parseRawChild v))
-    <$> fetchItemsRaw (pushHeader (showValId v) cli) opt sig v
+    <$> fetchItemsRaw (pushHeader (showId v) cli) opt sig v

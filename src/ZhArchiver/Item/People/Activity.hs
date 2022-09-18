@@ -55,6 +55,10 @@ data Activity = Activity
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Activity
 
+instance ShowId Activity where
+  showType = const "activity"
+  showId = T.unpack . actId
+
 instance ZhData Activity where
   parseRaw (Raw v) =
     withObject
