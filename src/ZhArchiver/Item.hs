@@ -11,6 +11,7 @@ module ZhArchiver.Item
     ZhData (..),
     runParser,
     Item (..),
+    fetchItem,
     fetchItems,
     ItemContainer (..),
     fetchChildItems,
@@ -67,6 +68,9 @@ class (ZhData a) => Item a where
   type IId a
   type Signer a
   fetchRaw :: (MonadHttp m, MonadThrow m) => Signer a -> IId a -> m (RawData a)
+
+fetchItem :: (Item a, MonadHttp m, MonadThrow m) => Signer a -> IId a -> m a
+fetchItem s i = runParser parseRaw <$> fetchRaw s i
 
 fetchItems :: (Item a, Show (IId a), MonadHttp m, MonadThrow m) => Cli -> Signer a -> [IId a] -> m [a]
 fetchItems cli s is =
