@@ -9,6 +9,7 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Int (Int64)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
@@ -95,7 +96,6 @@ data Pin = Pin
   { pinId :: Text,
     pinAuthor :: Author,
     pinCreated :: Time,
-    pinIsDeleted :: Bool,
     pinBody :: Maybe PinBody,
     pinRawData :: JSON.Value
   }
@@ -162,7 +162,6 @@ instance ZhData Pin where
          [ ('pinId, foStock "id"),
            ('pinAuthor, FoParse "author" poAuthor),
            ('pinCreated, FoParse "created" poTime),
-           ('pinIsDeleted, foStock "is_deleted"),
            ('pinBody, FoCustom [|parseBodyMaybe|]),
            ('pinRawData, FoRaw)
          ]
@@ -170,8 +169,8 @@ instance ZhData Pin where
       v
     where
       parseBodyMaybe val =
-        withObject "pin" (.: "is_deleted") v >>= \d ->
-          if d
+        withObject "pin" (.:? "is_deleted") v >>= \d ->
+          if fromMaybe False d
             then pure Nothing
             else Just <$> parseBody val
 

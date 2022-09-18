@@ -37,7 +37,8 @@ newtype QId = QId Int
 data Question = Question
   { qId :: QId,
     qAuthor :: Maybe Author,
-    qCreated, qUpdated :: Time,
+    qCreated :: Time,
+    qUpdated :: Maybe Time,
     qContent :: Maybe Content,
     qCommentCount :: Int,
     qComments :: [Comment],
@@ -71,7 +72,7 @@ instance ZhData Question where
          [ ('qId, FoParse "id" PoStock),
            ('qAuthor, FoParse "author" poAuthorMaybe),
            ('qCreated, FoParse "created" poTime),
-           ('qUpdated, FoParse "updated_time" poTime),
+           ('qUpdated, FoParseMaybe "updated_time" False poTime),
            ('qContent, FoParse "detail" poContentMaybe),
            ('qCommentCount, FoParse "comment_count" PoStock),
            ('qComments, FoConst (listE [])),

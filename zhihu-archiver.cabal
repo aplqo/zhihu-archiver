@@ -39,9 +39,9 @@ library
       ZhArchiver.Item.Collection
       ZhArchiver.Item.Column
       ZhArchiver.Item.People
+      ZhArchiver.Item.People.Activity
       ZhArchiver.Item.Pin
       ZhArchiver.Item.Question
-      ZhArchiver.People.API
       ZhArchiver.Progress
       ZhArchiver.RawParser.TH
       ZhArchiver.RawParser.Util
