@@ -44,9 +44,9 @@ class ZhData d where
   parseRaw :: RawData d -> Parser d
   saveData :: FilePath -> d -> IO ()
 
-runParser :: (ZhData a) => RawData a -> a
-runParser v =
-  case parse parseRaw v of
+runParser :: (a -> Parser b) -> a -> b
+runParser p v =
+  case parse p v of
     Success r -> r
     Error e -> error ("Parse error:" ++ e)
 
@@ -61,7 +61,7 @@ fetchItems cli s is =
    in traverse
         ( \(i, idx) ->
             liftIO (showProgress cli ("Fetching " ++ show i ++ " " ++ show idx ++ "/" ++ show tot))
-              >> (runParser <$> fetchRaw s i)
+              >> (runParser parseRaw <$> fetchRaw s i)
         )
         (zip is [(1 :: Int) ..])
         <* liftIO (endProgress cli)
@@ -70,6 +70,8 @@ class (Item a, ZhData i) => ItemContainer a i where
   type ICOpt a i
   type ICSigner a i
   fetchItemsRaw :: (MonadHttp m, MonadThrow m) => Cli -> ICOpt a i -> ICSigner a i -> a -> m [RawData i]
+  parseRawChild :: a -> RawData i -> Parser i
+  parseRawChild _ = parseRaw
   saveItems :: FilePath -> ICOpt a i -> a -> [i] -> IO ()
 
 fetchChildItems ::
@@ -80,5 +82,5 @@ fetchChildItems ::
   a ->
   m [i]
 fetchChildItems cli opt sig v =
-  fmap runParser
+  fmap (runParser (parseRawChild v))
     <$> fetchItemsRaw (pushHeader (showValId v) cli) opt sig v

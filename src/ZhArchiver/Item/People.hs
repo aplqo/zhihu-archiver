@@ -20,7 +20,8 @@ import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer (Answer)
-import ZhArchiver.Item.Article (Article)
+import ZhArchiver.Item.Article
+import ZhArchiver.Item.Article.Parser
 import ZhArchiver.Item.Collection
 import ZhArchiver.Item.Column
 import ZhArchiver.Progress
@@ -118,6 +119,7 @@ instance ItemContainer People Article where
             [QueryParam [queryKey|include|] [queryValue|data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;data[*].author.vip_info;|]]
         )
         (zse96 zs)
+  parseRawChild _ (Raw v) = $(mkArticleParser False) v
   saveItems p _ s =
     traverse_ (saveData (p </> showId s </> "article"))
 

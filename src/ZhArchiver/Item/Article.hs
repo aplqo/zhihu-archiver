@@ -11,7 +11,6 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Language.Haskell.TH (listE)
 import Network.HTTP.Req
 import System.FilePath
 import ZhArchiver.Author
@@ -20,8 +19,8 @@ import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
+import ZhArchiver.Item.Article.Parser
 import ZhArchiver.Progress
-import ZhArchiver.RawParser.TH
 import ZhArchiver.Types
 
 newtype ArtId = ArtId Int
@@ -61,24 +60,7 @@ instance Item Article where
         mempty
 
 instance ZhData Article where
-  parseRaw (Raw v) =
-    $( rawParser
-         'Article
-         [ ('artId, foStock "id"),
-           ('artTitle, foStock "title"),
-           ('artImage, FoParse "image_url" poImageMaybe),
-           ('artTitleImage, FoParseMaybe "title_image" True poImageMaybe),
-           ('artAuthor, FoParse "author" poAuthor),
-           ('artCreate, FoParse "created" poTime),
-           ('artUpdate, FoParse "updated" poTime),
-           ('artVote, foStock "voteup_count"),
-           ('artContent, FoParse "content" poContent),
-           ('artCommentCount, foStock "comment_count"),
-           ('artComment, FoConst (listE [])),
-           ('artRawData, FoRaw)
-         ]
-     )
-      v
+  parseRaw (Raw v) = $(mkArticleParser True) v
   saveData p a =
     withDirectory (p </> showId a) $
       encodeFilePretty "info.json" a
