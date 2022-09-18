@@ -1,6 +1,8 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module ZhArchiver.Item
   ( RawData (..),
@@ -21,8 +23,11 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.Encode.Pretty
 import Data.Aeson.Types
 import qualified Data.ByteString.Lazy as LBS
+import Data.Foldable (traverse_)
+import Data.Type.Equality (type (~~))
 import Network.HTTP.Req
 import System.Directory
+import System.FilePath
 import ZhArchiver.Progress
 
 newtype RawData a = Raw {unRaw :: JSON.Value}
@@ -43,6 +48,14 @@ withDirectory p a =
 class ZhData d where
   parseRaw :: RawData d -> Parser d
   saveData :: FilePath -> d -> IO ()
+  default saveData :: (ToJSON d, ShowId d) => FilePath -> d -> IO ()
+  saveData p v =
+    withDirectory (p </> showId v) $
+      encodeFilePretty "info.json" v
+
+  loadData :: FilePath -> IO (Either String d)
+  default loadData :: (FromJSON d) => FilePath -> IO (Either String d)
+  loadData p = JSON.eitherDecodeFileStrict (p </> "info.json")
 
 runParser :: (a -> Parser b) -> a -> b
 runParser p v =
@@ -73,6 +86,10 @@ class (Item a, ZhData i) => ItemContainer a i where
   parseRawChild :: a -> RawData i -> Parser i
   parseRawChild _ = parseRaw
   saveItems :: FilePath -> ICOpt a i -> a -> [i] -> IO ()
+  default saveItems :: (ShowId a, ShowId i, ICOpt a i ~~ ()) => FilePath -> ICOpt a i -> a -> [i] -> IO ()
+  saveItems _ () _ [] = pure ()
+  saveItems p () s v@(x : _) =
+    traverse_ (saveData (p </> showId s </> showType x)) v
 
 fetchChildItems ::
   (ItemContainer a i, MonadHttp m, MonadThrow m, ShowId a) =>

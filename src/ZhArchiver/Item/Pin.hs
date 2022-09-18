@@ -13,7 +13,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
 import Network.HTTP.Req
-import System.FilePath
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
@@ -175,9 +174,6 @@ instance ZhData Pin where
           if d
             then pure Nothing
             else Just <$> parseBody val
-  saveData p v =
-    withDirectory (p </> showId v) $
-      encodeFilePretty "info.json" v
 
 instance Item Pin where
   type IId Pin = Text

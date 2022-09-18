@@ -12,7 +12,6 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
-import System.FilePath
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
@@ -61,9 +60,6 @@ instance Item Article where
 
 instance ZhData Article where
   parseRaw (Raw v) = $(mkArticleParser True) v
-  saveData p a =
-    withDirectory (p </> showId a) $
-      encodeFilePretty "info.json" a
 
 instance Commentable Article where
   hasComment a = artCommentCount a /= 0

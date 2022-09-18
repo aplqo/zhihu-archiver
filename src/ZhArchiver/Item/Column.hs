@@ -79,9 +79,6 @@ instance ZhData Column where
          ]
      )
       v
-  saveData p a =
-    withDirectory (p </> showId a) $
-      encodeFilePretty "info.json" a
 
 instance ItemContainer Column AnsOrArt where
   type ICOpt Column AnsOrArt = Bool

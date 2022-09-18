@@ -84,9 +84,6 @@ instance ZhData People where
          ]
      )
       v
-  saveData p a =
-    withDirectory (p </> showId a) $
-      encodeFilePretty "info.json" a
 
 instance ItemContainer People Answer where
   type ICOpt People Answer = ()
@@ -104,8 +101,6 @@ instance ItemContainer People Answer where
             ]
         )
         (zse96 zs)
-  saveItems p _ s =
-    traverse_ (saveData (p </> showId s </> "answer"))
 
 instance ItemContainer People Article where
   type ICOpt People Article = ()
@@ -121,11 +116,13 @@ instance ItemContainer People Article where
         )
         (zse96 zs)
   parseRawChild _ (Raw v) = $(mkArticleParser False) v
-  saveItems p _ s =
-    traverse_ (saveData (p </> showId s </> "article"))
 
 data PeopleColumn = PCol {pcColumn :: Column, pcRawData :: JSON.Value}
   deriving (Show)
+
+instance ShowId PeopleColumn where
+  showType = const "column"
+  showId p = showId (pcColumn p)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''PeopleColumn
 
@@ -140,9 +137,6 @@ instance ZhData PeopleColumn where
          ]
      )
       v
-  saveData p a =
-    withDirectory (p </> showId (pcColumn a)) $
-      encodeFilePretty "info.json" a
 
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
@@ -157,8 +151,6 @@ instance ItemContainer People PeopleColumn where
               sp
               [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
           )
-  saveItems p _ s =
-    traverse_ (saveData (p </> showId s </> "column"))
 
 instance ItemContainer People Pin where
   type ICOpt People Pin = ()
@@ -177,8 +169,6 @@ instance ItemContainer People Pin where
           return v {pinRawData = c}
       )
       c
-  saveItems p _ s =
-    traverse_ (saveData (p </> showId s </> "pin"))
 
 data CollType
   = CotCreated
