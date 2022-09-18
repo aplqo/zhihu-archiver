@@ -1,8 +1,9 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Collection (Collection (..)) where
+module ZhArchiver.Item.Collection (Collection (..), ColItem (..)) where
 
 import Control.Applicative
 import Data.Aeson
@@ -17,9 +18,12 @@ import System.FilePath
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
+import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt
+import ZhArchiver.Item.Answer
+import ZhArchiver.Item.Article
 import ZhArchiver.Progress
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
@@ -98,9 +102,47 @@ instance Commentable Collection where
     (\c -> a {colComment = c})
       <$> fetchComment (pushHeader "comment" cli) StCollection (T.pack (show (colId a)))
 
-instance ItemContainer Collection AnsOrArt where
-  type ICOpt Collection AnsOrArt = ()
-  type ICSigner Collection AnsOrArt = ()
+data ColItem = ColItem
+  { colItBody :: AnsOrArt,
+    colItRawData :: JSON.Value
+  }
+  deriving (Show)
+
+deriveJSON defaultOptions {fieldLabelModifier = drop 5} ''ColItem
+
+instance ZhData ColItem where
+  parseRaw (Raw v) =
+    $( rawParser
+         'ColItem
+         [ ('colItBody, FoParse "content" (PoBind [|fmap fixup . parseRaw . Raw|])),
+           ('colItRawData, FoRaw)
+         ]
+     )
+      v
+    where
+      fixup =
+        \case
+          AoaAnswer a -> AoaAnswer (a {aRawData = JSON.Null})
+          AoaArticle a -> AoaArticle (a {artRawData = JSON.Null})
+  saveData p v =
+    case colItBody v of
+      AoaAnswer a ->
+        withDirectory (p </> ("answer_" ++ showId a)) $
+          encodeFilePretty "info.json" v
+      AoaArticle a ->
+        withDirectory (p </> ("article_" ++ showId a)) $
+          encodeFilePretty "info.json" v
+
+instance Commentable ColItem where
+  hasComment v = hasComment (colItBody v)
+  attachComment cli v = (\c -> v {colItBody = c}) <$> attachComment cli (colItBody v)
+
+instance HasImage ColItem where
+  fetchImage cli v = (\b -> v {colItBody = b}) <$> fetchImage cli (colItBody v)
+
+instance ItemContainer Collection ColItem where
+  type ICOpt Collection ColItem = ()
+  type ICSigner Collection ColItem = ()
   fetchItemsRaw cli _ _ Collection {colId = cid} = do
     sp <- $(apiPath "collections" "items") (T.pack (show cid))
     fmap Raw <$> reqPaging (pushHeader "item" cli) (httpsURI sp [])

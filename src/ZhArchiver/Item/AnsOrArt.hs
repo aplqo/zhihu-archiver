@@ -35,10 +35,10 @@ instance ZhData AnsOrArt where
   saveData p v = case v of
     AoaArticle a ->
       withDirectory (p </> ("article_" ++ showId a)) $
-        encodeFilePretty "info.json" a
+        encodeFilePretty "info.json" v
     AoaAnswer a ->
       withDirectory (p </> ("answer_" ++ showId a)) $
-        encodeFilePretty "info.json" a
+        encodeFilePretty "info.json" v
 
 instance HasImage AnsOrArt where
   fetchImage cli a =
