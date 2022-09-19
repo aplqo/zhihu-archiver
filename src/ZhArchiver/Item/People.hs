@@ -6,7 +6,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.People (IId (..), People (..), CollType (..)) where
+module ZhArchiver.Item.People
+  ( IId (..),
+    People (..),
+    CollType (..),
+    PeopleColumn (..),
+    PeoplePin (..),
+  )
+where
 
 import Data.Aeson hiding (Value)
 import Data.Aeson.TH (deriveJSON)
@@ -169,9 +176,9 @@ instance Commentable PeoplePin where
 instance HasImage PeoplePin where
   fetchImage cli p = PPin <$> fetchImage cli (pPin p)
 
-instance ItemContainer People Pin where
-  type ICOpt People Pin = ()
-  type ICSigner People Pin = ()
+instance ItemContainer People PeoplePin where
+  type ICOpt People PeoplePin = ()
+  type ICSigner People PeoplePin = ()
   fetchItemsRaw cli _ _ (People {pUrlToken = PId uid}) = do
     sp <- $(apiPath "pins" "moments") uid
     fmap Raw
