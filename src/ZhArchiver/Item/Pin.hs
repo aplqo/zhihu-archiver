@@ -4,12 +4,12 @@
 
 module ZhArchiver.Item.Pin (PinContent (..), Pin (..)) where
 
+import Control.Applicative
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Bifunctor
 import Data.Int (Int64)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
@@ -162,7 +162,7 @@ instance ShowId Pin where
   showId Pin {pinId = p} = T.unpack p
 
 instance FromRaw Pin where
-  parseRaw v =
+  parseRaw =
     $( rawParser
          'Pin
          [ ('pinId, foStock "id"),
@@ -171,13 +171,9 @@ instance FromRaw Pin where
            ('pinBody, FoCustom [|parseBodyMaybe|])
          ]
      )
-      v
     where
       parseBodyMaybe val =
-        withObject "pin" (.:? "is_deleted") v >>= \d ->
-          if fromMaybe False d
-            then pure Nothing
-            else Just <$> parseRaw val
+        optional (parseRaw val)
 
 instance ZhData Pin
 
