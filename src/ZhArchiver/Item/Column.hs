@@ -1,8 +1,11 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Column (Column (..)) where
+module ZhArchiver.Item.Column (IId (..), Column (..)) where
 
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
@@ -25,33 +28,27 @@ import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types
 
 data Column = Column
-  { coId, coTitle :: Text,
+  { coId :: IId Column,
+    coTitle :: Text,
     coUpdated, coCreated :: Time,
     coVote :: Int64,
     coDescription, coIntro :: Maybe Content,
     coAuthor :: Author,
     coImage :: Image
   }
-  deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''Column
 
-deriveHasImage
-  ''Column
-  [ ('coAuthor, "author"),
-    ('coDescription, "description"),
-    ('coIntro, "intro"),
-    ('coImage, "image")
-  ]
-
 instance ShowId Column where
   showType = const "column"
-  showId Column {coId = c} = T.unpack c
+  showId Column {coId = CoId c} = T.unpack c
 
 instance Item Column where
-  type IId Column = Text
+  newtype IId Column = CoId Text
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer Column = ()
-  fetchRaw _ cid =
+  fetchRaw _ (CoId cid) =
     Raw . responseBody
       <$> req
         GET
@@ -59,6 +56,8 @@ instance Item Column where
         NoReqBody
         jsonResponse
         ("include" =: ("created,intro" :: Text))
+
+deriving instance (Show Column)
 
 instance FromRaw Column where
   parseRaw =
@@ -78,10 +77,18 @@ instance FromRaw Column where
 
 instance ZhData Column
 
+deriveHasImage
+  ''Column
+  [ ('coAuthor, "author"),
+    ('coDescription, "description"),
+    ('coIntro, "intro"),
+    ('coImage, "image")
+  ]
+
 instance ItemContainer Column AnsOrArt where
   type ICOpt Column AnsOrArt = Bool
   type ICSigner Column AnsOrArt = ()
-  fetchItemsRaw cli pin _ Column {coId = cid} =
+  fetchItemsRaw cli pin _ Column {coId = CoId cid} =
     if pin
       then do
         sp2 <- $(apiPath "columns" "pinned-items") cid

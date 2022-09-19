@@ -2,10 +2,11 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Question (QId (..), Question (..)) where
+module ZhArchiver.Item.Question (IId (..), Question (..)) where
 
 import Data.Aeson hiding (Value)
 import Data.Aeson.TH (deriveJSON)
@@ -30,11 +31,8 @@ import ZhArchiver.Request.Uri (apiPath, httpsURI)
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
 
-newtype QId = QId Int
-  deriving newtype (Show, FromJSON, ToJSON)
-
 data Question = Question
-  { qId :: QId,
+  { qId :: IId Question,
     qAuthor :: Maybe Author,
     qCreated :: Time,
     qUpdated :: Maybe Time,
@@ -42,7 +40,6 @@ data Question = Question
     qCommentCount :: Int,
     qComments :: [Comment]
   }
-  deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = tail} ''Question
 
@@ -51,7 +48,9 @@ instance ShowId Question where
   showId Question {qId = QId q} = show q
 
 instance Item Question where
-  type IId Question = QId
+  newtype IId Question = QId Int
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer Question = ZseState
   fetchRaw zs (QId qid) =
     Raw . responseBody
@@ -62,6 +61,8 @@ instance Item Question where
         jsonResponse
         ("include" =: ("author,description,is_anonymous;detail;comment_count;answer_count;excerpt" :: Text))
         (zse96 zs)
+
+deriving instance (Show Question)
 
 instance FromRaw Question where
   parseRaw =

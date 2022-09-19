@@ -2,10 +2,11 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.People (People (..), CollType (..)) where
+module ZhArchiver.Item.People (IId (..), People (..), CollType (..)) where
 
 import Data.Aeson hiding (Value)
 import Data.Aeson.TH (deriveJSON)
@@ -36,27 +37,19 @@ import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Request.Zse96V3
 
 data People = People
-  { pId, pUrlToken :: Text,
+  { pId, pUrlToken :: IId People,
     pName :: Text,
     pHeadline :: Maybe Text,
     pDescription :: Maybe Content,
     pAvatar :: Image,
     pCover :: Maybe Image
   }
-  deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = tail} ''People
 
-deriveHasImage
-  ''People
-  [ ('pDescription, "description"),
-    ('pAvatar, "avatar"),
-    ('pCover, "cover")
-  ]
-
 instance ShowId People where
   showType = const "people"
-  showId People {pUrlToken = t} = T.unpack t
+  showId People {pUrlToken = PId t} = T.unpack t
 
 instance FromRaw People where
   parseRaw =
@@ -75,10 +68,12 @@ instance FromRaw People where
 instance ZhData People
 
 instance Item People where
-  type IId People = Text
+  newtype IId People = PId Text
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer People = ()
 
-  fetchRaw _ pid =
+  fetchRaw _ (PId pid) =
     Raw . responseBody
       <$> req
         GET
@@ -87,10 +82,19 @@ instance Item People where
         jsonResponse
         ("include" =: ("allow_message,is_followed,is_following,is_org,is_blocking,employments,answer_count,follower_count,articles_count,gender,badge[?(type=best_answerer)].topics;description;cover_url" :: Text))
 
+deriving instance (Show People)
+
+deriveHasImage
+  ''People
+  [ ('pDescription, "description"),
+    ('pAvatar, "avatar"),
+    ('pCover, "cover")
+  ]
+
 instance ItemContainer People Answer where
   type ICOpt People Answer = ()
   type ICSigner People Answer = ZseState
-  fetchItemsRaw cli _ zs (People {pUrlToken = uid}) = do
+  fetchItemsRaw cli _ zs (People {pUrlToken = PId uid}) = do
     sp <- $(apiPath "members" "answers") uid
     fmap Raw
       <$> reqPagingSign
@@ -107,7 +111,7 @@ instance ItemContainer People Answer where
 instance ItemContainer People Article where
   type ICOpt People Article = ()
   type ICSigner People Article = ZseState
-  fetchItemsRaw cli _ zs (People {pUrlToken = uid}) = do
+  fetchItemsRaw cli _ zs (People {pUrlToken = PId uid}) = do
     sp <- $(apiPath "members" "articles") uid
     fmap Raw
       <$> reqPagingSign
@@ -139,7 +143,7 @@ instance HasImage PeopleColumn where
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
   type ICSigner People PeopleColumn = ()
-  fetchItemsRaw cli _ _ (People {pUrlToken = uid}) =
+  fetchItemsRaw cli _ _ (People {pUrlToken = PId uid}) =
     do
       sp <- $(apiPath "members" "column-contributions") uid
       fmap Raw
@@ -169,7 +173,7 @@ instance HasImage PeoplePin where
 instance ItemContainer People Pin where
   type ICOpt People Pin = ()
   type ICSigner People Pin = ()
-  fetchItemsRaw cli _ _ (People {pUrlToken = uid}) = do
+  fetchItemsRaw cli _ _ (People {pUrlToken = PId uid}) = do
     sp <- $(apiPath "pins" "moments") uid
     fmap Raw
       <$> reqPaging
@@ -183,7 +187,7 @@ data CollType
 instance ItemContainer People Collection where
   type ICOpt People Collection = CollType
   type ICSigner People Collection = ()
-  fetchItemsRaw cli typ _ People {pUrlToken = uid} =
+  fetchItemsRaw cli typ _ People {pUrlToken = PId uid} =
     fmap Raw <$> case typ of
       CotCreated ->
         do

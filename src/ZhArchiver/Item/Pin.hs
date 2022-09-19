@@ -1,8 +1,11 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Pin (PinContent (..), Pin (..)) where
+module ZhArchiver.Item.Pin (PinContent (..), PinBody (..), IId (..), Pin (..)) where
 
 import Control.Applicative
 import Data.Aeson
@@ -83,7 +86,7 @@ instance FromRaw PinContent where
 
 data PinBody = PinBody
   { -- | pin id for attaching comment, same as Pin.pinId
-    pinId' :: Text,
+    pinId' :: IId Pin,
     pinUpdated :: Time,
     pinReaction :: Int64,
     pinContent :: [PinContent],
@@ -91,15 +94,13 @@ data PinBody = PinBody
     pinCommentCount :: Int,
     pinComment :: [Comment]
   }
-  deriving (Show)
 
 data Pin = Pin
-  { pinId :: Text,
+  { pinId :: IId Pin,
     pinAuthor :: Author,
     pinCreated :: Time,
     pinBody :: Maybe PinBody
   }
-  deriving (Show)
 
 $( concat
      <$> sequenceA
@@ -140,8 +141,8 @@ instance Commentable PinBody where
     pinCommentCount p /= 0
       || hasComment (pinOriginPin p)
       || hasComment (pinRepin p)
-  attachComment cli p = do
-    (c, rc) <- fetchComment (pushHeader "comment" cli) StPin (pinId' p)
+  attachComment cli p@PinBody {pinId' = PinId pid} = do
+    (c, rc) <- fetchComment (pushHeader "comment" cli) StPin pid
     (orig, ro) <- attachComment (pushHeader "origin_pin" cli) (pinOriginPin p)
     (rp, r) <- attachComment (pushHeader "repin" cli) (pinRepin p)
     return
@@ -159,7 +160,7 @@ instance Commentable PinBody where
 
 instance ShowId Pin where
   showType = const "pin"
-  showId Pin {pinId = p} = T.unpack p
+  showId Pin {pinId = PinId p} = T.unpack p
 
 instance FromRaw Pin where
   parseRaw =
@@ -178,9 +179,11 @@ instance FromRaw Pin where
 instance ZhData Pin
 
 instance Item Pin where
-  type IId Pin = Text
+  newtype IId Pin = PinId Text
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer Pin = ()
-  fetchRaw _ pid =
+  fetchRaw _ (PinId pid) =
     Raw . responseBody
       <$> req
         GET
@@ -188,6 +191,10 @@ instance Item Pin where
         NoReqBody
         jsonResponse
         mempty
+
+deriving instance (Show PinBody)
+
+deriving instance (Show Pin)
 
 instance Commentable Pin where
   hasComment p = hasComment (pinBody p)

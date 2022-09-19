@@ -1,11 +1,16 @@
-module ZhArchiver.Item.Question (QId) where
+{-# LANGUAGE FlexibleInstances #-}
+
+module ZhArchiver.Item.Question (Question) where
 
 import Data.Aeson
+import ZhArchiver.Item
 
-data QId
+data Question
 
-instance Show QId
+instance Item Question
 
-instance FromJSON QId
+instance FromJSON (IId Question)
 
-instance ToJSON QId
+instance ToJSON (IId Question)
+
+instance Show (IId Question)

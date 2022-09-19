@@ -1,9 +1,10 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Article (ArtId (..), Article (..)) where
+module ZhArchiver.Item.Article (IId (..), Article (..)) where
 
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
@@ -23,11 +24,8 @@ import ZhArchiver.Progress
 import ZhArchiver.Raw
 import ZhArchiver.Types
 
-newtype ArtId = ArtId Int
-  deriving newtype (Show, FromJSON, ToJSON)
-
 data Article = Article
-  { artId :: ArtId,
+  { artId :: IId Article,
     artTitle :: Text,
     artImage, artTitleImage :: Maybe Image,
     artAuthor :: Author,
@@ -37,7 +35,6 @@ data Article = Article
     artCommentCount :: Int,
     artComment :: [Comment]
   }
-  deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Article
 
@@ -51,7 +48,9 @@ instance FromRaw Article where
 instance ZhData Article
 
 instance Item Article where
-  type IId Article = ArtId
+  newtype IId Article = ArtId Int64
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer Article = ()
 
   fetchRaw _ (ArtId i) =
@@ -62,6 +61,8 @@ instance Item Article where
         NoReqBody
         jsonResponse
         mempty
+
+deriving instance (Show Article)
 
 instance Commentable Article where
   hasComment a = artCommentCount a /= 0

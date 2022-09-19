@@ -1,9 +1,10 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Answer (AId (..), Answer (..)) where
+module ZhArchiver.Item.Answer (IId (..), Answer (..)) where
 
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
@@ -18,27 +19,23 @@ import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
-import {-# SOURCE #-} ZhArchiver.Item.Question (QId)
+import {-# SOURCE #-} ZhArchiver.Item.Question
 import ZhArchiver.Progress
 import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
 
-newtype AId = AId Int
-  deriving newtype (Show, FromJSON, ToJSON)
-
 data Answer = Answer
-  { aId :: AId,
+  { aId :: IId Answer,
     aAuthor :: Maybe Author,
-    aQuestion :: (QId, Text),
+    aQuestion :: (IId Question, Text),
     aCreated, aUpdated :: Time,
     aVoteUp :: Int64,
     aContent :: Content,
     aCommentCount :: Int,
     aComment :: [Comment]
   }
-  deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = tail} ''Answer
 
@@ -74,7 +71,9 @@ instance FromRaw Answer where
 instance ZhData Answer
 
 instance Item Answer where
-  type IId Answer = AId
+  newtype IId Answer = AId Int64
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer Answer = ZseState
 
   fetchRaw zs aid =
@@ -86,6 +85,8 @@ instance Item Answer where
         jsonResponse
         ("include" =: ("content;comment_count;voteup_count" :: Text))
         (zse96 zs)
+
+deriving instance (Show Answer)
 
 instance Commentable Answer where
   hasComment a = aCommentCount a /= 0

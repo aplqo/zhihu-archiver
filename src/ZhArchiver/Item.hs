@@ -9,6 +9,7 @@ module ZhArchiver.Item
   ( ZhData (..),
     saveZhData,
     Item (..),
+    IId (..),
     fetchItem,
     fetchItems,
     ItemContainer (..),
@@ -55,14 +56,14 @@ saveZhData p v =
    in createDirectoryIfMissing True dir >> storeData dir v
 
 class (ZhData a) => Item a where
-  type IId a
+  data IId a
   type Signer a
   fetchRaw :: (MonadHttp m, MonadThrow m) => Signer a -> IId a -> m (RawData a)
 
 instance (Item a) => Item (WithRaw a) where
-  type IId (WithRaw a) = IId a
+  newtype IId (WithRaw a) = Wr {unWr :: IId a}
   type Signer (WithRaw a) = Signer a
-  fetchRaw s i = Raw . unRaw <$> fetchRaw @a s i
+  fetchRaw s i = Raw . unRaw <$> fetchRaw @a s (unWr i)
 
 fetchItem :: (Item a, MonadHttp m, MonadThrow m) => Signer a -> IId a -> m a
 fetchItem s i = runRawParser parseRaw <$> fetchRaw s i

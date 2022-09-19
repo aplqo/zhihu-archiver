@@ -146,7 +146,7 @@ instance HasImage Activity where
 instance ItemContainer People Activity where
   type ICOpt People Activity = ()
   type ICSigner People Activity = ()
-  fetchItemsRaw cli _ _ People {pUrlToken = uid} =
+  fetchItemsRaw cli _ _ People {pUrlToken = PId uid} =
     do
       sp <- $(apiPath "web_moments" "activities") uid
       fmap Raw

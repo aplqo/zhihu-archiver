@@ -2,10 +2,11 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ZhArchiver.Item.Collection (Collection (..), ColItem (..)) where
+module ZhArchiver.Item.Collection (IId (..), Collection (..), ColItem (..)) where
 
 import Data.Aeson
 import Data.Aeson.TH
@@ -29,7 +30,7 @@ import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types
 
 data Collection = Collection
-  { colId :: Int,
+  { colId :: IId Collection,
     colTitle :: Text,
     colDescription :: Maybe Content,
     colCreated, colUpdated :: Time,
@@ -37,16 +38,8 @@ data Collection = Collection
     colCommentCount :: Int,
     colComment :: [Comment]
   }
-  deriving (Show)
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Collection
-
-deriveHasImage
-  ''Collection
-  [ ('colDescription, "description"),
-    ('colCreator, "creator"),
-    ('colComment, "comment")
-  ]
 
 instance ShowId Collection where
   showType = const "collection"
@@ -70,7 +63,9 @@ instance FromRaw Collection where
 instance ZhData Collection
 
 instance Item Collection where
-  type IId Collection = Int
+  newtype IId Collection = ColId Int
+    deriving (Show)
+    deriving newtype (FromJSON, ToJSON)
   type Signer Collection = ()
   fetchRaw _ cid =
     Raw . responseBody
@@ -81,11 +76,20 @@ instance Item Collection where
         jsonResponse
         mempty
 
+deriving instance (Show Collection)
+
 instance Commentable Collection where
   hasComment a = colCommentCount a /= 0
   attachComment cli a =
     bimap (\c -> a {colComment = c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment (pushHeader "comment" cli) StCollection (T.pack (show (colId a)))
+
+deriveHasImage
+  ''Collection
+  [ ('colDescription, "description"),
+    ('colCreator, "creator"),
+    ('colComment, "comment")
+  ]
 
 -- | api response contains more information than collection/item
 newtype ColItem = ColItem {colItBody :: AnsOrArt}

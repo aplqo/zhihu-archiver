@@ -53,11 +53,10 @@ pullItemWith ::
   forall a.
   (Item a, HasImage a) =>
   (Cli -> a -> ImgFetcher Req a) ->
-  Proxy a ->
   IId a ->
   Signer a ->
   WithCfg a
-pullItemWith com _ aid sign = do
+pullItemWith com aid sign = do
   cli <- asks (pushHeader (showType @a Proxy) . cfgCli)
   home <- asks cfgHome
   r <- lift (fetchItem @a sign aid >>= com cli >>= fetchImage cli)
@@ -67,20 +66,18 @@ pullItemWith com _ aid sign = do
 pullItemI ::
   forall a.
   (Item a, HasImage a) =>
-  Proxy a ->
-  IId a ->
+  IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
-pullItemI _ = pullItemWith (const pure) Proxy
+pullItemI = pullItemWith (const pure)
 
 pullItemCI ::
   forall a.
   (Item a, Commentable a, HasImage a) =>
-  Proxy a ->
-  IId a ->
+  IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
-pullItemCI _ = pullItemWith getComment Proxy
+pullItemCI = pullItemWith getComment
 
 pullChildWith ::
   forall a i.
@@ -119,7 +116,7 @@ pullChildCI ::
   WithCfg [WithRaw i]
 pullChildCI _ = pullChildWith @a @(WithRaw i) (`traverseP` getComment) Proxy
 
-pullQuestionAns :: ZseState -> QId -> WithCfg ()
+pullQuestionAns :: ZseState -> IId (WithRaw Question) -> WithCfg ()
 pullQuestionAns sign qid = do
-  q <- pullItemCI @Question Proxy qid sign
+  q <- pullItemCI @Question qid sign
   void (pullChildCI @Question @Answer Proxy () (wrVal q) sign)
