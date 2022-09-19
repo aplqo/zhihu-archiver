@@ -33,6 +33,7 @@ import ZhArchiver.Types
 
 data Question = Question
   { qId :: IId Question,
+    qTitle :: Text,
     qAuthor :: Maybe Author,
     qCreated :: Time,
     qUpdated :: Maybe Time,
@@ -46,6 +47,9 @@ deriveJSON defaultOptions {fieldLabelModifier = tail} ''Question
 instance ShowId Question where
   showType = const "question"
   showId Question {qId = QId q} = show q
+
+instance ShowName Question where
+  showName = T.unpack . qTitle
 
 instance Item Question where
   newtype IId Question = QId Int
@@ -68,6 +72,7 @@ instance FromRaw Question where
     $( rawParser
          'Question
          [ ('qId, FoParse "id" PoStock),
+           ('qTitle, foStock "title"),
            ('qAuthor, foFromRaw "author"),
            ('qCreated, FoParse "created" poTime),
            ('qUpdated, FoParseMaybe "updated_time" False poTime),

@@ -68,7 +68,7 @@ poContentMaybe :: ParseOpt
 poContentMaybe = PoMap [|appUnless T.null contentFromHtml|]
 
 class HasContent a where
-  convertContent :: (PandocMonad m) => FilePath -> a -> m (Maybe (Text, Pandoc))
+  convertContent :: (PandocMonad m) => FilePath -> a -> m (Maybe Pandoc)
 
 instance (HasContent a) => HasContent (Maybe a) where
   convertContent p = fmap join . traverse (convertContent p)

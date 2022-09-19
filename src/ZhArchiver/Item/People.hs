@@ -58,6 +58,9 @@ instance ShowId People where
   showType = const "people"
   showId People {pUrlToken = PId t} = T.unpack t
 
+instance ShowName People where
+  showName = const ""
+
 instance FromRaw People where
   parseRaw =
     $( rawParser
@@ -131,7 +134,7 @@ instance ItemContainer People Article where
 
 newtype PeopleColumn = PCol {pcColumn :: Column}
   deriving (Show)
-  deriving newtype (ShowId, FromJSON, ToJSON)
+  deriving newtype (ShowId, ShowName, FromJSON, ToJSON)
 
 instance FromRaw PeopleColumn where
   parseRaw =

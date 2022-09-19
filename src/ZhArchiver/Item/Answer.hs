@@ -43,6 +43,9 @@ instance ShowId Answer where
   showType = const "answer"
   showId Answer {aId = AId i} = show i
 
+instance ShowName Answer where
+  showName = T.unpack . snd . aQuestion
+
 instance FromRaw Answer where
   parseRaw =
     $( rawParser
@@ -104,6 +107,4 @@ deriveHasImage
   ]
 
 instance HasContent Answer where
-  convertContent p v =
-    (\c -> Just (mconcat ["[answer ", T.pack (showId v), "] ", snd (aQuestion v)], c))
-      <$> contentToPandoc p (aContent v)
+  convertContent p v = Just <$> contentToPandoc p (aContent v)

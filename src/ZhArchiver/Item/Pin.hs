@@ -172,11 +172,10 @@ instance Commentable PinBody where
 instance HasContent PinBody where
   convertContent p pb = do
     cont <- mconcat <$> traverse (convertPinContent p) (pinContent pb)
-    orig <- fmap snd <$> convertContent p (pinOriginPin pb)
+    orig <- convertContent p (pinOriginPin pb)
     return
       ( Just
-          ( mconcat ["[pin ", pinIdTxt (pinId' pb), "]"],
-            case orig of
+          ( case orig of
               Just (Pandoc _ bs) ->
                 doc
                   ( cont
@@ -192,6 +191,9 @@ instance HasContent Pin where
 instance ShowId Pin where
   showType = const "pin"
   showId Pin {pinId = PinId p} = T.unpack p
+
+instance ShowName Pin where
+  showName = const ""
 
 instance FromRaw Pin where
   parseRaw =

@@ -43,6 +43,9 @@ instance ShowId Column where
   showType = const "column"
   showId Column {coId = CoId c} = T.unpack c
 
+instance ShowName Column where
+  showName = T.unpack . coTitle
+
 instance Item Column where
   newtype IId Column = CoId Text
     deriving newtype (Show, FromJSON, ToJSON)

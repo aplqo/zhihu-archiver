@@ -23,10 +23,18 @@ data AnsOrArt
 
 instance ShowId AnsOrArt where
   showType = const "item"
+  valType a =
+    case a of
+      AoaArticle _ -> "article"
+      AoaAnswer _ -> "answer"
   showId v =
     case v of
       AoaArticle a -> "art_" ++ showId a
       AoaAnswer a -> "ans_" ++ showId a
+
+instance ShowName AnsOrArt where
+  showName (AoaAnswer a) = showName a
+  showName (AoaArticle a) = showName a
 
 deriveJSON defaultOptions {constructorTagModifier = drop 3} ''AnsOrArt
 

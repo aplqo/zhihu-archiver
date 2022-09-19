@@ -38,7 +38,7 @@ import ZhArchiver.REPL.FilePath
 import ZhArchiver.Raw
 import ZhArchiver.Request.Zse96V3
 
-saveContent :: (HasContent a) => FilePath -> FilePath -> Cli -> a -> IO ()
+saveContent :: (ShowId a, ShowName a, HasContent a) => FilePath -> FilePath -> Cli -> a -> IO ()
 saveContent doc img cli a = do
   imgp <- fromJust <$> makeRelativeEx doc img
   con <-
@@ -46,13 +46,11 @@ saveContent doc img cli a = do
       convertContent imgp a
         >>= maybe
           (pure Nothing)
-          ( \(file, pd) ->
-              (\cont -> Just (file, cont)) <$> writeMarkdown def pd
-          )
+          (fmap Just . writeMarkdown def)
   createDirectoryIfMissing True doc
   showMessage cli "Convert content to markdown"
   case con of
-    Just (file, cont) -> TIO.writeFile (doc </> T.unpack file <.> "md") cont
+    Just cont -> TIO.writeFile (doc </> showValName a <.> "md") cont
     Nothing -> pure ()
 
 data Config = Config
@@ -112,7 +110,7 @@ pullItemCI = pullItemWith getComment
 
 pullItemCID ::
   forall a.
-  (Item a, Commentable a, HasImage a, HasContent a) =>
+  (Item a, Commentable a, HasImage a, HasContent a, ShowName a) =>
   IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
@@ -163,7 +161,7 @@ pullChildCI _ = pullChildWith @a @(WithRaw i) (`traverseP` getComment) Proxy
 
 pullChildCID ::
   forall a i.
-  (ItemContainer a i, Commentable i, HasImage i, HasContent i) =>
+  (ItemContainer a i, ShowName a, Commentable i, HasImage i, HasContent i, ShowName i) =>
   Proxy i ->
   ICOpt a i ->
   a ->
@@ -172,7 +170,7 @@ pullChildCID ::
 pullChildCID _ opt f sig = do
   dats <- pullChildCI @a @i Proxy opt f sig
 
-  docs <- asks (\cfg -> childStorePath @a @i Proxy Proxy (cfgDoc cfg </> showType @a Proxy </> showId f) opt)
+  docs <- asks (\cfg -> childStorePath @a @i Proxy Proxy (cfgDoc cfg </> showType @a Proxy </> showValName f) opt)
   img <- asks cfgImgStore
   cli <- typCli @i Proxy
   void (liftIO (traverseP cli (saveContent docs img) dats))
@@ -181,4 +179,4 @@ pullChildCID _ opt f sig = do
 pullQuestionAns :: ZseState -> IId (WithRaw Question) -> WithCfg ()
 pullQuestionAns sign qid = do
   q <- pullItemCI @Question qid sign
-  void (pullChildCI @Question @Answer Proxy () (wrVal q) sign)
+  void (pullChildCID @Question @Answer Proxy () (wrVal q) sign)

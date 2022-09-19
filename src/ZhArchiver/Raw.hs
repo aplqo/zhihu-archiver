@@ -80,7 +80,11 @@ instance Functor WithRaw where
 
 instance (ShowId a) => ShowId (WithRaw a) where
   showType = const (showType @a Proxy)
+  valType = valType . wrVal
   showId = showId . wrVal
+
+instance (ShowName a) => ShowName (WithRaw a) where
+  showName = showName . wrVal
 
 instance (FromRaw a) => FromRaw (WithRaw a) where
   parseRaw v = do

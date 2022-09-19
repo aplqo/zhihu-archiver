@@ -45,6 +45,9 @@ instance ShowId Collection where
   showType = const "collection"
   showId Collection {colId = i} = show i
 
+instance ShowName Collection where
+  showName = T.unpack . colTitle
+
 instance FromRaw Collection where
   parseRaw =
     $( rawParser
@@ -93,7 +96,7 @@ deriveHasImage
 -- | api response contains more information than collection/item
 newtype ColItem = ColItem {colItBody :: AnsOrArt}
   deriving (Show)
-  deriving newtype (FromJSON, ToJSON, ShowId, HasContent)
+  deriving newtype (FromJSON, ToJSON, ShowId, ShowName, HasContent)
 
 instance FromRaw ColItem where
   parseRaw =

@@ -1,6 +1,8 @@
 module ZhArchiver.Progress
   ( ShowId (..),
     showValId,
+    ShowName (..),
+    showValName,
     Cli (..),
     defaultCli,
     cliWithHeader,
@@ -39,10 +41,22 @@ cliWithHeader h = pushHeader h defaultCli
 
 class ShowId a where
   showType :: Proxy a -> String
+
+  valType :: a -> String
+  valType = const (showType @a Proxy)
+
   showId :: a -> String
 
 showValId :: forall t. (ShowId t) => t -> String
-showValId a = showType (Proxy @t) ++ " " ++ showId a
+showValId a = valType a ++ " " ++ showId a
+
+class ShowName a where
+  showName :: a -> String
+
+showValName :: forall t. (ShowId t, ShowName t) => t -> String
+showValName a =
+  let n = showName a
+   in concat ["[", valType a, " ", showId a, "]", if null n then "" else ' ' : n]
 
 pushHeader :: String -> Cli -> Cli
 pushHeader s c@(Cli {cliMsgHeader = h}) = c {cliMsgHeader = (s, length s) : h}

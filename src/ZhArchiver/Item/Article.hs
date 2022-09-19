@@ -43,6 +43,9 @@ instance ShowId Article where
   showType = const "article"
   showId Article {artId = ArtId a} = show a
 
+instance ShowName Article where
+  showName = T.unpack . artTitle
+
 instance FromRaw Article where
   parseRaw = $(mkArticleParser True)
 
@@ -84,5 +87,5 @@ deriveHasImage
 
 instance HasContent Article where
   convertContent p v =
-    (\c -> Just (mconcat ["[article ", T.pack (show (artId v)), "] ", artTitle v], setTitle (text (artTitle v)) c))
+    Just . setTitle (text (artTitle v))
       <$> contentToPandoc p (artContent v)
