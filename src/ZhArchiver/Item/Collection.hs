@@ -93,7 +93,7 @@ deriveHasImage
 -- | api response contains more information than collection/item
 newtype ColItem = ColItem {colItBody :: AnsOrArt}
   deriving (Show)
-  deriving newtype (FromJSON, ToJSON, ShowId)
+  deriving newtype (FromJSON, ToJSON, ShowId, HasContent)
 
 instance FromRaw ColItem where
   parseRaw =

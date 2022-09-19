@@ -8,36 +8,65 @@ module ZhArchiver.REPL.Util
     --
     pullItemI,
     pullItemCI,
+    pullItemCID,
     pullChildI,
     pullChildCI,
+    pullChildCID,
     pullQuestionAns,
   )
 where
 
 import Control.Monad.Reader
+import Data.Default
+import Data.Maybe
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Data.Typeable
 import Network.HTTP.Req
+import System.Directory (createDirectoryIfMissing)
 import System.FilePath
+import qualified Text.Pandoc as P
+import Text.Pandoc.Writers
 import ZhArchiver.Comment
+import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer
 import ZhArchiver.Item.Question
 import ZhArchiver.Progress
+import ZhArchiver.REPL.FilePath
 import ZhArchiver.Raw
 import ZhArchiver.Request.Zse96V3
 
+saveContent :: (HasContent a) => FilePath -> FilePath -> Cli -> a -> IO ()
+saveContent doc img cli a = do
+  imgp <- fromJust <$> makeRelativeEx doc img
+  con <-
+    P.runIOorExplode $
+      convertContent imgp a
+        >>= maybe
+          (pure Nothing)
+          ( \(file, pd) ->
+              (\cont -> Just (file, cont)) <$> writeMarkdown def pd
+          )
+  createDirectoryIfMissing True doc
+  showMessage cli "Convert content to markdown"
+  case con of
+    Just (file, cont) -> TIO.writeFile (doc </> T.unpack file <.> "md") cont
+    Nothing -> pure ()
+
 data Config = Config
   { cfgCli :: Cli,
-    cfgHome, cfgImgStore :: FilePath
+    cfgHome, cfgImgStore, cfgDoc :: FilePath
   }
 
-setupCfg :: Int -> FilePath -> FilePath -> Config
-setupCfg wid hom img =
+setupCfg :: Int -> FilePath -> FilePath -> FilePath -> Config
+setupCfg wid doc hom img =
   Config
     { cfgCli = defaultCli {cliMaxWidth = wid},
       cfgHome = hom,
-      cfgImgStore = img
+      cfgImgStore = img,
+      cfgDoc = doc
     }
 
 type WithCfg a = ReaderT Config (ImgFetcher Req) a
@@ -49,6 +78,9 @@ runCfg cfg v = do
   putNewline
   return a
 
+typCli :: (ShowId a) => Proxy a -> WithCfg Cli
+typCli p = asks (pushHeader (showType p) . cfgCli)
+
 pullItemWith ::
   forall a.
   (Item a, HasImage a) =>
@@ -57,7 +89,7 @@ pullItemWith ::
   Signer a ->
   WithCfg a
 pullItemWith com aid sign = do
-  cli <- asks (pushHeader (showType @a Proxy) . cfgCli)
+  cli <- typCli @a Proxy
   home <- asks cfgHome
   r <- lift (fetchItem @a sign aid >>= com cli >>= fetchImage cli)
   liftIO $ saveZhData (home </> showType @a Proxy) r
@@ -72,12 +104,25 @@ pullItemI ::
 pullItemI = pullItemWith (const pure)
 
 pullItemCI ::
-  forall a.
   (Item a, Commentable a, HasImage a) =>
   IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
 pullItemCI = pullItemWith getComment
+
+pullItemCID ::
+  forall a.
+  (Item a, Commentable a, HasImage a, HasContent a) =>
+  IId (WithRaw a) ->
+  Signer a ->
+  WithCfg (WithRaw a)
+pullItemCID iid sig = do
+  dat <- pullItemCI iid sig
+
+  cli <- typCli @a Proxy
+  Config {cfgDoc = doc, cfgImgStore = img} <- ask
+  liftIO (saveContent (doc </> showType @a Proxy) img cli dat)
+  return dat
 
 pullChildWith ::
   forall a i.
@@ -91,7 +136,7 @@ pullChildWith ::
 pullChildWith com _ opt f sig =
   do
     home <- asks cfgHome
-    cli <- asks (pushHeader (showType @i Proxy) . cfgCli)
+    cli <- typCli @i Proxy
     rs <- lift (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)
     liftIO $ storeChildItems @a @i Proxy (home </> showType @a Proxy </> showId f) opt rs
     return rs
@@ -115,6 +160,23 @@ pullChildCI ::
   ICSigner a i ->
   WithCfg [WithRaw i]
 pullChildCI _ = pullChildWith @a @(WithRaw i) (`traverseP` getComment) Proxy
+
+pullChildCID ::
+  forall a i.
+  (ItemContainer a i, Commentable i, HasImage i, HasContent i) =>
+  Proxy i ->
+  ICOpt a i ->
+  a ->
+  ICSigner a i ->
+  WithCfg [WithRaw i]
+pullChildCID _ opt f sig = do
+  dats <- pullChildCI @a @i Proxy opt f sig
+
+  docs <- asks (\cfg -> childStorePath @a @i Proxy Proxy (cfgDoc cfg </> showType @a Proxy </> showId f) opt)
+  img <- asks cfgImgStore
+  cli <- typCli @i Proxy
+  void (liftIO (traverseP cli (saveContent docs img) dats))
+  return dats
 
 pullQuestionAns :: ZseState -> IId (WithRaw Question) -> WithCfg ()
 pullQuestionAns sign qid = do

@@ -13,6 +13,7 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
+import Text.Pandoc.Builder
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
@@ -80,3 +81,8 @@ deriveHasImage
     ('artContent, "content"),
     ('artComment, "comment")
   ]
+
+instance HasContent Article where
+  convertContent p v =
+    (\c -> Just (mconcat ["[article ", T.pack (show (artId v)), "] ", artTitle v], setTitle (text (artTitle v)) c))
+      <$> contentToPandoc p (artContent v)

@@ -46,6 +46,7 @@ library
       ZhArchiver.Raw
       ZhArchiver.RawParser.TH
       ZhArchiver.RawParser.Util
+      ZhArchiver.REPL.FilePath
       ZhArchiver.REPL.Util
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri

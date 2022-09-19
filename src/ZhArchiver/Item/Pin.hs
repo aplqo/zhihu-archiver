@@ -13,10 +13,13 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Bifunctor
 import Data.Int (Int64)
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
 import Network.HTTP.Req
+import Text.Pandoc
+import Text.Pandoc.Builder
 import ZhArchiver.Author
 import ZhArchiver.Comment
 import ZhArchiver.Content
@@ -83,6 +86,14 @@ instance FromRaw PinContent where
                 PcLink {pcLinkTitle = title, pcUrl = url, pcLinkImage = img}
             _ -> pure PcUnknown
       )
+
+convertPinContent :: (PandocMonad m) => FilePath -> PinContent -> m Blocks
+convertPinContent p c =
+  case c of
+    PcText t -> (\(Pandoc _ b) -> fromList b) <$> contentToPandoc p t
+    PcImage {pcImage = img} -> pure (para (image (imgLocalPath p img) T.empty mempty))
+    PcLink {pcLinkTitle = tit, pcUrl = u} -> pure (para (link u tit mempty))
+    PcUnknown -> pure (plain (text "unknown pin content"))
 
 data PinBody = PinBody
   { -- | pin id for attaching comment, same as Pin.pinId
@@ -158,6 +169,26 @@ instance Commentable PinBody where
           ]
       )
 
+instance HasContent PinBody where
+  convertContent p pb = do
+    cont <- mconcat <$> traverse (convertPinContent p) (pinContent pb)
+    orig <- fmap snd <$> convertContent p (pinOriginPin pb)
+    return
+      ( Just
+          ( mconcat ["[pin ", pinIdTxt (pinId' pb), "]"],
+            case orig of
+              Just (Pandoc _ bs) ->
+                doc
+                  ( cont
+                      <> blockQuote (para (text "repin:" <> text ((auName . pinAuthor . fromJust . pinOriginPin) pb)) <> fromList bs)
+                  )
+              Nothing -> doc cont
+          )
+      )
+
+instance HasContent Pin where
+  convertContent p pn = maybe (pure Nothing) (convertContent p) (pinBody pn)
+
 instance ShowId Pin where
   showType = const "pin"
   showId Pin {pinId = PinId p} = T.unpack p
@@ -179,7 +210,7 @@ instance FromRaw Pin where
 instance ZhData Pin
 
 instance Item Pin where
-  newtype IId Pin = PinId Text
+  newtype IId Pin = PinId {pinIdTxt :: Text}
     deriving newtype (Show, FromJSON, ToJSON)
   type Signer Pin = ()
   fetchRaw _ (PinId pid) =

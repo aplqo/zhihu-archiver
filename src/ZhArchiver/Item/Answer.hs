@@ -102,3 +102,8 @@ deriveHasImage
     ('aContent, "content"),
     ('aComment, "comment")
   ]
+
+instance HasContent Answer where
+  convertContent p v =
+    (\c -> Just (mconcat ["[answer ", T.pack (showId v), "] ", snd (aQuestion v)], c))
+      <$> contentToPandoc p (aContent v)

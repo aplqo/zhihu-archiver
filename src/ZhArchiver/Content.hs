@@ -12,9 +12,11 @@ module ZhArchiver.Content
     contentToPandoc,
     poContent,
     poContentMaybe,
+    HasContent (..),
   )
 where
 
+import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
 import Data.Default
@@ -29,6 +31,7 @@ import ZhArchiver.Image
     getHtmlImages,
     lookupLocalPath,
   )
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 
@@ -63,6 +66,15 @@ poContent = PoMap [|contentFromHtml|]
 
 poContentMaybe :: ParseOpt
 poContentMaybe = PoMap [|appUnless T.null contentFromHtml|]
+
+class HasContent a where
+  convertContent :: (PandocMonad m) => FilePath -> a -> m (Maybe (Text, Pandoc))
+
+instance (HasContent a) => HasContent (Maybe a) where
+  convertContent p = fmap join . traverse (convertContent p)
+
+instance (HasContent a) => HasContent (WithRaw a) where
+  convertContent p = convertContent p . wrVal
 
 contentToPandoc :: PandocMonad m => FilePath -> Content -> m Pandoc
 contentToPandoc store Content {contHtml = Html h, contImages = img} =

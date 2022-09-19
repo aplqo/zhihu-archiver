@@ -8,6 +8,7 @@ import Data.Aeson.Types
 import Data.Bifunctor
 import Data.Text (Text)
 import ZhArchiver.Comment
+import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer (Answer)
@@ -55,3 +56,9 @@ instance Commentable AnsOrArt where
 
   attachComment cli (AoaArticle a) = first AoaArticle <$> attachComment cli a
   attachComment cli (AoaAnswer a) = first AoaAnswer <$> attachComment cli a
+
+instance HasContent AnsOrArt where
+  convertContent p a =
+    case a of
+      AoaAnswer ans -> convertContent p ans
+      AoaArticle art -> convertContent p art
