@@ -5,9 +5,9 @@
 module ZhArchiver.Item.Pin (PinContent (..), Pin (..)) where
 
 import Data.Aeson
-import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
+import Data.Bifunctor
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -21,6 +21,7 @@ import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 import ZhArchiver.Types
@@ -59,26 +60,26 @@ instance HasImage PinContent where
     (\img -> p {pcLinkImage = img}) <$> fetchImage (pushHeader "link-img" cli) i
   fetchImage _ PcUnknown = pure PcUnknown
 
-parsePinContent :: JSON.Value -> Parser PinContent
-parsePinContent =
-  withObject
-    "content"
-    ( \o ->
-        ((o .: "type") :: Parser Text) >>= \case
-          "text" ->
-            PcText . contentFromHtml <$> o .: "content"
-          "image" -> do
-            orig <- imgFromUrl <$> o .: "original_url"
-            img <- imgFromUrl <$> o .: "url"
-            return PcImage {pcOriginal = orig, pcImage = img}
-          "link" -> do
-            title <- o .: "title"
-            url <- o .: "title"
-            img <- appUnless T.null imgFromUrl <$> o .: "image_url"
-            return
-              PcLink {pcLinkTitle = title, pcUrl = url, pcLinkImage = img}
-          _ -> pure PcUnknown
-    )
+instance FromRaw PinContent where
+  parseRaw =
+    withObject
+      "content"
+      ( \o ->
+          ((o .: "type") :: Parser Text) >>= \case
+            "text" ->
+              PcText . contentFromHtml <$> o .: "content"
+            "image" -> do
+              orig <- imgFromUrl <$> o .: "original_url"
+              img <- imgFromUrl <$> o .: "url"
+              return PcImage {pcOriginal = orig, pcImage = img}
+            "link" -> do
+              title <- o .: "title"
+              url <- o .: "title"
+              img <- appUnless T.null imgFromUrl <$> o .: "image_url"
+              return
+                PcLink {pcLinkTitle = title, pcUrl = url, pcLinkImage = img}
+            _ -> pure PcUnknown
+      )
 
 data PinBody = PinBody
   { -- | pin id for attaching comment, same as Pin.pinId
@@ -96,8 +97,7 @@ data Pin = Pin
   { pinId :: Text,
     pinAuthor :: Author,
     pinCreated :: Time,
-    pinBody :: Maybe PinBody,
-    pinRawData :: JSON.Value
+    pinBody :: Maybe PinBody
   }
   deriving (Show)
 
@@ -120,20 +120,20 @@ $( concat
        ]
  )
 
-parseBody :: Value -> Parser PinBody
-parseBody =
-  $( rawParser
-       'PinBody
-       [ ('pinId', foStock "id"),
-         ('pinUpdated, FoParse "updated" poTime),
-         ('pinReaction, foStock "reaction_count"),
-         ('pinContent, FoParse "content" (PoBind [|traverse parsePinContent|])),
-         ('pinOriginPin, FoParseMaybe "origin_pin" False (PoBind [|parseRaw . Raw|])),
-         ('pinRepin, FoParseMaybe "repin" False (PoBind [|parseRaw . Raw|])),
-         ('pinCommentCount, foStock "comment_count"),
-         ('pinComment, FoConst (listE []))
-       ]
-   )
+instance FromRaw PinBody where
+  parseRaw =
+    $( rawParser
+         'PinBody
+         [ ('pinId', foStock "id"),
+           ('pinUpdated, FoParse "updated" poTime),
+           ('pinReaction, foStock "reaction_count"),
+           ('pinContent, FoParse "content" (PoBind [|traverse parseRaw|])),
+           ('pinOriginPin, FoParseMaybe "origin_pin" False (PoBind [|parseRaw|])),
+           ('pinRepin, FoParseMaybe "repin" False (PoBind [|parseRaw|])),
+           ('pinCommentCount, foStock "comment_count"),
+           ('pinComment, FoConst (listE []))
+         ]
+     )
 
 instance Commentable PinBody where
   hasComment p =
@@ -141,29 +141,34 @@ instance Commentable PinBody where
       || hasComment (pinOriginPin p)
       || hasComment (pinRepin p)
   attachComment cli p = do
-    c <- fetchComment (pushHeader "comment" cli) StPin (pinId' p)
-    orig <- attachComment (pushHeader "origin_pin" cli) (pinOriginPin p)
-    rp <- attachComment (pushHeader "repin" cli) (pinRepin p)
+    (c, rc) <- fetchComment (pushHeader "comment" cli) StPin (pinId' p)
+    (orig, ro) <- attachComment (pushHeader "origin_pin" cli) (pinOriginPin p)
+    (rp, r) <- attachComment (pushHeader "repin" cli) (pinRepin p)
     return
-      p
-        { pinOriginPin = orig,
-          pinRepin = rp,
-          pinComment = c
-        }
+      ( p
+          { pinOriginPin = orig,
+            pinRepin = rp,
+            pinComment = c
+          },
+        fromListRm
+          [ ("comment", packLeaf rc),
+            ("origin_pin", RtBranch ro),
+            ("repin", RtBranch r)
+          ]
+      )
 
 instance ShowId Pin where
   showType = const "pin"
   showId Pin {pinId = p} = T.unpack p
 
-instance ZhData Pin where
-  parseRaw (Raw v) =
+instance FromRaw Pin where
+  parseRaw v =
     $( rawParser
          'Pin
          [ ('pinId, foStock "id"),
-           ('pinAuthor, FoParse "author" poAuthor),
+           ('pinAuthor, foFromRaw "author"),
            ('pinCreated, FoParse "created" poTime),
-           ('pinBody, FoCustom [|parseBodyMaybe|]),
-           ('pinRawData, FoRaw)
+           ('pinBody, FoCustom [|parseBodyMaybe|])
          ]
      )
       v
@@ -172,7 +177,9 @@ instance ZhData Pin where
         withObject "pin" (.:? "is_deleted") v >>= \d ->
           if fromMaybe False d
             then pure Nothing
-            else Just <$> parseBody val
+            else Just <$> parseRaw val
+
+instance ZhData Pin
 
 instance Item Pin where
   type IId Pin = Text
@@ -188,4 +195,4 @@ instance Item Pin where
 
 instance Commentable Pin where
   hasComment p = hasComment (pinBody p)
-  attachComment cli p = (\b -> p {pinBody = b}) <$> attachComment cli (pinBody p)
+  attachComment cli p = first (\b -> p {pinBody = b}) <$> attachComment cli (pinBody p)

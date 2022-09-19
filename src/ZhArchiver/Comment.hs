@@ -5,6 +5,7 @@ module ZhArchiver.Comment
   ( SourceType (..),
     Comment (..),
     Commentable (..),
+    getComment,
     fetchComment,
   )
 where
@@ -15,10 +16,11 @@ import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (parseMaybe)
+import Data.Bifunctor
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.List (sortOn)
-import Data.Maybe (fromJust)
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
@@ -28,6 +30,7 @@ import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.Util
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
@@ -47,8 +50,7 @@ data Comment = Comment
     comCreated :: Time,
     comContent :: Maybe Content,
     comLike, comDislike :: Int,
-    comComment :: [Comment],
-    comRawData :: JSON.Value
+    comComment :: [Comment]
   }
   deriving (Show)
 
@@ -101,76 +103,74 @@ parseRawComment :: JSON.Value -> (Comment, Maybe Text, Int)
 parseRawComment =
   fromJust
     . parseMaybe
-      ( \v ->
-          withObject
-            "comment body"
-            ( \o -> do
-                cid <- o .: "id"
-                author <- o .: "author" >>= parseAuthorMaybe
-                created <- convertTime <$> (o .: "created_time")
-                cont <-
-                  o .: "is_delete" >>= \del ->
-                    if del
-                      then return Nothing
-                      else
-                        (\c -> Just (Content {contHtml = c, contImages = emptyImgMap}))
-                          <$> o .: "content"
-                isAuthor <- o .: "is_author"
-                liked <- o .: "like_count"
-                disliked <- o .: "dislike_count"
+      ( withObject
+          "comment body"
+          ( \o -> do
+              cid <- o .: "id"
+              author <- o .: "author" >>= parseRaw
+              created <- convertTime <$> (o .: "created_time")
+              cont <-
+                o .: "is_delete" >>= \del ->
+                  if del
+                    then return Nothing
+                    else
+                      (\c -> Just (Content {contHtml = c, contImages = emptyImgMap}))
+                        <$> o .: "content"
+              isAuthor <- o .: "is_author"
+              liked <- o .: "like_count"
+              disliked <- o .: "dislike_count"
 
-                reply <-
-                  unlessMaybe (== "0") <$> o .: "reply_comment_id"
+              reply <-
+                unlessMaybe (== "0") <$> o .: "reply_comment_id"
 
-                childC <- o .: "child_comment_count"
+              childC <- o .: "child_comment_count"
 
-                return
-                  ( Comment
-                      { comId = cid,
-                        comAuthor = author,
-                        comIsAuthor = isAuthor,
-                        comCreated = created,
-                        comContent = cont,
-                        comLike = liked,
-                        comDislike = disliked,
-                        comComment = [],
-                        comRawData = v
-                      },
-                    reply,
-                    childC
-                  )
-            )
-            v
+              return
+                ( Comment
+                    { comId = cid,
+                      comAuthor = author,
+                      comIsAuthor = isAuthor,
+                      comCreated = created,
+                      comContent = cont,
+                      comLike = liked,
+                      comDislike = disliked,
+                      comComment = []
+                    },
+                  reply,
+                  childC
+                )
+          )
       )
 
-fetchChildComment :: (MonadHttp m, MonadThrow m) => Cli -> Text -> m [(Comment, Maybe Text)]
+fetchChildComment :: (MonadHttp m, MonadThrow m) => Cli -> Text -> m [((Comment, Maybe Text), JSON.Value)]
 fetchChildComment cli cid = do
   raw <- fmap parse <$> fetchChildCommentRaw (pushHeader "child_comment" cli) cid
   liftIO $ showProgress cli "Getting missing comment"
-  del <- complete (HS.fromList (cid : fmap (comId . fst) raw)) (parents raw) <* liftIO (endProgress cli)
+  del <- complete (HS.fromList (cid : fmap (comId . fst . fst) raw)) (parents raw) <* liftIO (endProgress cli)
   return (del ++ raw)
   where
     parse v =
       let (c, r, _) = parseRawComment v
-       in (c, r)
+       in ((c, r), v)
 
-    parents :: [(Comment, Maybe Text)] -> [Text]
-    parents = foldr (\(_, i) c -> maybe c (: c) i) []
+    parents :: [((Comment, Maybe Text), JSON.Value)] -> [Text]
+    parents = mapMaybe (snd . fst)
 
     comCli = pushHeader "missing_comment" cli
 
     complete has expect =
       let missing = filter (\i -> not (HS.member i has)) expect
        in if null missing
-            then return []
+            then pure []
             else do
               items <-
-                traverse
-                  ( \i ->
-                      liftIO (showProgress comCli ("Getting comment " ++ T.unpack i))
-                        *> (fmap parse . fetchCommentRaw) i
-                  )
-                  missing
+                fmap parse
+                  <$> traverse
+                    ( \i ->
+                        liftIO (showProgress comCli ("Getting comment " ++ T.unpack i))
+                          >> fetchCommentRaw i
+                    )
+                    missing
               par <- complete (HS.union has (HS.fromList missing)) (parents items)
               return (items ++ par)
 
@@ -196,35 +196,31 @@ buildCommentTree cs =
 
 class Commentable a where
   hasComment :: a -> Bool
-  attachComment :: (MonadHttp m, MonadThrow m) => Cli -> a -> m a
-
-instance (Commentable a, ShowId a) => Commentable [a] where
-  hasComment = any hasComment
-  attachComment cli v =
-    let num = length v
-     in traverse
-          ( \(i, idx) ->
-              if hasComment i
-                then attachComment (appendHeader (" " ++ showId i ++ " " ++ show idx ++ "/" ++ show num) cli) i
-                else pure i
-          )
-          (zip v [(1 :: Int) ..])
+  attachComment :: (MonadHttp m, MonadThrow m) => Cli -> a -> m (a, RawMap)
 
 instance (Commentable a) => Commentable (Maybe a) where
   hasComment = maybe False hasComment
-  attachComment cli = traverse (attachComment cli)
+  attachComment cli v =
+    (\t -> (fst <$> t, maybe emptyRm snd t))
+      <$> traverse (attachComment cli) v
 
-fetchComment :: (MonadHttp m, MonadThrow m) => Cli -> SourceType -> Text -> m [Comment]
+getComment :: (Commentable a, MonadHttp m, MonadThrow m) => Cli -> WithRaw a -> m (WithRaw a)
+getComment cli item@(WithRaw {wrVal = v, wrRawData = rd}) =
+  if hasComment v
+    then (\(nv, rc) -> item {wrVal = nv, wrRawData = Just (maybe rc (mergeRm rc) rd)}) <$> attachComment cli v
+    else pure item
+
+fetchComment :: (MonadHttp m, MonadThrow m) => Cli -> SourceType -> Text -> m ([Comment], [JSON.Value])
 fetchComment cli typ sid =
-  buildCommentTree . concat
+  first buildCommentTree . unzip . concat
     <$> ( fetchRootCommentRaw (pushHeader "root_comment" cli) typ sid
             >>= traverse
               ( \i ->
                   let (c, f, cnt) = parseRawComment i
                    in if cnt == 0
-                        then pure [(c, f)]
+                        then pure [((c, f), i)]
                         else
-                          ((c, f) :)
+                          (((c, f), i) :)
                             <$> fetchChildComment
                               (pushHeader (showValId c) cli)
                               (comId c)

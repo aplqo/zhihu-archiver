@@ -55,6 +55,7 @@ import System.Posix.Files
 import Text.HTML.TagSoup
 import Text.URI
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 
@@ -159,15 +160,10 @@ instance (HasImage a) => HasImage (Maybe a) where
   fetchImage cli = traverse (fetchImage cli)
 
 instance (HasImage a, ShowId a) => HasImage [a] where
-  fetchImage cli a =
-    let total = length a
-     in traverse
-          ( \(i, v) ->
-              fetchImage
-                (appendHeader (concat [" ", showId i, " ", show v, "/", show total]) cli)
-                i
-          )
-          (zip a [(1 :: Int) ..])
+  fetchImage cli = traverseP cli fetchImage
+
+instance (HasImage a) => HasImage (WithRaw a) where
+  fetchImage cli v = (\nv -> v {wrVal = nv}) <$> fetchImage cli (wrVal v)
 
 mimeToExt :: HashMap ByteString Text
 mimeToExt = (HM.fromList . fmap swap . M.toList) defaultMimeMap

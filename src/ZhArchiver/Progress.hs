@@ -10,6 +10,7 @@ module ZhArchiver.Progress
     showProgress,
     endProgress,
     putNewline,
+    traverseP,
   )
 where
 
@@ -96,3 +97,12 @@ endProgress Cli {cliMultiline = m} = when m putNewline
 
 putNewline :: IO ()
 putNewline = putChar '\n'
+
+traverseP :: (Applicative f, ShowId a) => Cli -> (Cli -> a -> f b) -> [a] -> f [b]
+traverseP cli fun as =
+  let num = length as
+   in traverse
+        ( \(idx, i) ->
+            fun (appendHeader (concat [" ", showId i, " ", show idx, "/", show num]) cli) i
+        )
+        (zip [(1 :: Int) ..] as)

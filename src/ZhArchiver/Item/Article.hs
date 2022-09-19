@@ -6,8 +6,8 @@
 module ZhArchiver.Item.Article (ArtId (..), Article (..)) where
 
 import Data.Aeson
-import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
+import Data.Bifunctor
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -20,6 +20,7 @@ import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.Article.Parser
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.Types
 
 newtype ArtId = ArtId Int
@@ -34,8 +35,7 @@ data Article = Article
     artVote :: Int64,
     artContent :: Content,
     artCommentCount :: Int,
-    artComment :: [Comment],
-    artRawData :: JSON.Value
+    artComment :: [Comment]
   }
   deriving (Show)
 
@@ -44,6 +44,11 @@ deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Article
 instance ShowId Article where
   showType = const "article"
   showId Article {artId = ArtId a} = show a
+
+instance FromRaw Article where
+  parseRaw = $(mkArticleParser True)
+
+instance ZhData Article
 
 instance Item Article where
   type IId Article = ArtId
@@ -58,13 +63,10 @@ instance Item Article where
         jsonResponse
         mempty
 
-instance ZhData Article where
-  parseRaw (Raw v) = $(mkArticleParser True) v
-
 instance Commentable Article where
   hasComment a = artCommentCount a /= 0
   attachComment cli a =
-    (\c -> a {artComment = c})
+    bimap (\c -> a {artComment = c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment
         (pushHeader "comments" cli)
         StArticle

@@ -8,14 +8,12 @@
 module ZhArchiver.Item.Question (QId (..), Question (..)) where
 
 import Data.Aeson hiding (Value)
-import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
-import Data.Foldable (traverse_)
+import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH
 import Network.HTTP.Req
-import System.FilePath
 import Text.URI
 import Text.URI.QQ
 import ZhArchiver.Author
@@ -25,6 +23,7 @@ import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri (apiPath, httpsURI)
@@ -41,8 +40,7 @@ data Question = Question
     qUpdated :: Maybe Time,
     qContent :: Maybe Content,
     qCommentCount :: Int,
-    qComments :: [Comment],
-    qRawData :: JSON.Value
+    qComments :: [Comment]
   }
   deriving (Show)
 
@@ -65,29 +63,26 @@ instance Item Question where
         ("include" =: ("author,description,is_anonymous;detail;comment_count;answer_count;excerpt" :: Text))
         (zse96 zs)
 
-instance ZhData Question where
-  parseRaw (Raw v) =
+instance FromRaw Question where
+  parseRaw =
     $( rawParser
          'Question
          [ ('qId, FoParse "id" PoStock),
-           ('qAuthor, FoParse "author" poAuthorMaybe),
+           ('qAuthor, foFromRaw "author"),
            ('qCreated, FoParse "created" poTime),
            ('qUpdated, FoParseMaybe "updated_time" False poTime),
            ('qContent, FoParse "detail" poContentMaybe),
            ('qCommentCount, FoParse "comment_count" PoStock),
-           ('qComments, FoConst (listE [])),
-           ('qRawData, FoRaw)
+           ('qComments, FoConst (listE []))
          ]
      )
-      v
-  saveData p a =
-    withDirectory (p </> showId a) $
-      encodeFilePretty "info.json" a
+
+instance ZhData Question
 
 instance Commentable Question where
   hasComment = (/= 0) . qCommentCount
   attachComment cli v =
-    (\c -> v {qComments = c})
+    bimap (\c -> v {qComments = c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment (pushHeader "comment" cli) StQuestion (T.pack (show (qId v)))
 
 deriveHasImage ''Question [('qAuthor, "author"), ('qContent, "content"), ('qComments, "comments")]
@@ -106,5 +101,3 @@ instance ItemContainer Question Answer where
               [QueryParam [queryKey|include|] [queryValue|data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,is_sticky,collapsed_by,suggest_edit,comment_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,relevant_info,question,excerpt,is_labeled,paid_info,paid_info_content,reaction_instruction,relationship.is_authorized,is_author,voting,is_thanked,is_nothelp,is_recognized;data[*].mark_infos[*].url;data[*].author.follower_count,vip_info,badge[*].topics;data[*].settings.table_of_content.enabled|]]
           )
           (zse96 zs)
-  saveItems p _ q =
-    traverse_ (saveData (p </> showId q </> "answer"))

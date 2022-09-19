@@ -10,13 +10,11 @@ module ZhArchiver.Item.People.Activity
 where
 
 import Data.Aeson
-import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
-import Data.Foldable (traverse_)
+import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
-import System.FilePath
 import ZhArchiver.Comment
 import ZhArchiver.Image
 import ZhArchiver.Item
@@ -29,6 +27,7 @@ import ZhArchiver.Item.People
 import ZhArchiver.Item.Pin
 import ZhArchiver.Item.Question
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri
 import ZhArchiver.Types
@@ -49,18 +48,34 @@ deriveJSON defaultOptions {constructorTagModifier = drop 3} ''ActTarget
 data Activity = Activity
   { actId :: Text,
     actTime :: Time,
-    actTarget :: ActTarget,
-    actRawData :: JSON.Value
+    actTarget :: ActTarget
   }
 
 deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Activity
 
 instance ShowId Activity where
   showType = const "activity"
-  showId = T.unpack . actId
+  showId v =
+    case actTarget v of
+      ActAnswer a ->
+        "answer_" ++ showId a
+      ActArticle a ->
+        "article_" ++ showId a
+      ActColumn c ->
+        "column_" ++ showId c
+      ActCollection c ->
+        "collection_" ++ showId c
+      ActPeople p ->
+        "people_" ++ showId p
+      ActPin p ->
+        "pin_" ++ showId p
+      ActQuestion q ->
+        "question_" ++ showId q
+      ActOther t ->
+        "unknown_" ++ T.unpack t
 
-instance ZhData Activity where
-  parseRaw (Raw v) =
+instance FromRaw Activity where
+  parseRaw =
     withObject
       "Activity"
       ( \o -> do
@@ -72,13 +87,13 @@ instance ZhData Activity where
                         "target"
                         ( \t ->
                             ((t .: "type") :: Parser Text) >>= \case
-                              "answer" -> (\a -> ActAnswer a {aRawData = JSON.Null}) <$> parseRaw (Raw tar)
-                              "article" -> (\a -> ActArticle a {artRawData = JSON.Null}) <$> $(mkArticleParser False) tar
-                              "column" -> (\c -> ActColumn c {coRawData = JSON.Null}) <$> parseRaw (Raw tar)
-                              "collection" -> (\c -> ActCollection c {colRawData = JSON.Null}) <$> parseRaw (Raw tar)
-                              "people" -> (\p -> ActPeople p {pRawData = JSON.Null}) <$> parseRaw (Raw tar)
-                              "pin" -> (\p -> ActPin p {pinRawData = JSON.Null}) <$> parseRaw (Raw tar)
-                              "question" -> (\q -> ActQuestion q {qRawData = JSON.Null}) <$> parseRaw (Raw tar)
+                              "answer" -> ActAnswer <$> parseRaw tar
+                              "article" -> ActArticle <$> $(mkArticleParser False) tar
+                              "column" -> ActColumn <$> parseRaw tar
+                              "collection" -> ActCollection <$> parseRaw tar
+                              "people" -> ActPeople <$> parseRaw tar
+                              "pin" -> ActPin <$> parseRaw tar
+                              "question" -> ActQuestion <$> parseRaw tar
                               _ -> pure (ActOther aid)
                         )
                         tar
@@ -88,34 +103,11 @@ instance ZhData Activity where
             Activity
               { actId = aid,
                 actTime = tim,
-                actTarget = tar,
-                actRawData = v
+                actTarget = tar
               }
       )
-      v
-  saveData pat v =
-    withDirectory
-      ( pat
-          </> ( case actTarget v of
-                  ActAnswer a ->
-                    "answer_" ++ showId a
-                  ActArticle a ->
-                    "article_" ++ showId a
-                  ActColumn c ->
-                    "column_" ++ showId c
-                  ActCollection c ->
-                    "collection_" ++ showId c
-                  ActPeople p ->
-                    "people_" ++ showId p
-                  ActPin p ->
-                    "pin_" ++ showId p
-                  ActQuestion q ->
-                    "question_" ++ showId q
-                  ActOther t ->
-                    "unknown_" ++ T.unpack t
-              )
-      )
-      $ encodeFilePretty "info.json" v
+
+instance ZhData Activity
 
 instance Commentable Activity where
   hasComment v =
@@ -127,14 +119,14 @@ instance Commentable Activity where
       ActQuestion q -> hasComment q
       _ -> False
   attachComment cli v =
-    (\t -> v {actTarget = t})
+    first (\t -> v {actTarget = t})
       <$> ( case actTarget v of
-              ActAnswer a -> ActAnswer <$> attachComment cli a
-              ActArticle a -> ActArticle <$> attachComment cli a
-              ActCollection c -> ActCollection <$> attachComment cli c
-              ActPin p -> ActPin <$> attachComment cli p
-              ActQuestion q -> ActQuestion <$> attachComment cli q
-              o -> pure o
+              ActAnswer a -> first ActAnswer <$> attachComment cli a
+              ActArticle a -> first ActArticle <$> attachComment cli a
+              ActCollection c -> first ActCollection <$> attachComment cli c
+              ActPin p -> first ActPin <$> attachComment cli p
+              ActQuestion q -> first ActQuestion <$> attachComment cli q
+              o -> pure (o, emptyRm)
           )
 
 instance HasImage Activity where
@@ -161,5 +153,3 @@ instance ItemContainer People Activity where
         <$> reqPaging
           cli
           (httpsURI sp [])
-  saveItems p _ s =
-    traverse_ (saveData (p </> showId s </> "activity"))

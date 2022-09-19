@@ -43,6 +43,7 @@ library
       ZhArchiver.Item.Pin
       ZhArchiver.Item.Question
       ZhArchiver.Progress
+      ZhArchiver.Raw
       ZhArchiver.RawParser.TH
       ZhArchiver.RawParser.Util
       ZhArchiver.REPL.Util
@@ -50,6 +51,7 @@ library
       ZhArchiver.Request.Uri
       ZhArchiver.Request.Zse96V3
       ZhArchiver.Types
+      ZhArchiver.Util
   other-modules:
       Paths_zhihu_archiver
   autogen-modules:

@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -5,10 +7,9 @@
 
 module ZhArchiver.Item.Collection (Collection (..), ColItem (..)) where
 
-import Control.Applicative
 import Data.Aeson
-import qualified Data.Aeson as JSON
 import Data.Aeson.TH
+import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Language.Haskell.TH (listE)
@@ -20,9 +21,8 @@ import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt
-import ZhArchiver.Item.Answer
-import ZhArchiver.Item.Article
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
@@ -35,8 +35,7 @@ data Collection = Collection
     colCreated, colUpdated :: Time,
     colCreator :: Author,
     colCommentCount :: Int,
-    colComment :: [Comment],
-    colRawData :: JSON.Value
+    colComment :: [Comment]
   }
   deriving (Show)
 
@@ -53,31 +52,22 @@ instance ShowId Collection where
   showType = const "collection"
   showId Collection {colId = i} = show i
 
-instance ZhData Collection where
-  parseRaw (Raw v) =
-    parser v
-      <|> withObject
-        "Collection Response"
-        ( \o ->
-            o .: "collection"
-              >>= fmap (\c -> c {colRawData = v}) . parser
-        )
-        v
-    where
-      parser =
-        $( rawParser
-             'Collection
-             [ ('colId, foStock "id"),
-               ('colTitle, foStock "title"),
-               ('colDescription, FoParse "description" poContentMaybe),
-               ('colCreated, FoParse "created_time" poTime),
-               ('colUpdated, FoParse "updated_time" poTime),
-               ('colCreator, FoParse "creator" poAuthor),
-               ('colCommentCount, foStock "comment_count"),
-               ('colComment, FoConst (listE [])),
-               ('colRawData, FoRaw)
-             ]
-         )
+instance FromRaw Collection where
+  parseRaw =
+    $( rawParser
+         'Collection
+         [ ('colId, foStock "id"),
+           ('colTitle, foStock "title"),
+           ('colDescription, FoParse "description" poContentMaybe),
+           ('colCreated, FoParse "created_time" poTime),
+           ('colUpdated, FoParse "updated_time" poTime),
+           ('colCreator, foFromRaw "creator"),
+           ('colCommentCount, foStock "comment_count"),
+           ('colComment, FoConst (listE []))
+         ]
+     )
+
+instance ZhData Collection
 
 instance Item Collection where
   type IId Collection = Int
@@ -94,42 +84,27 @@ instance Item Collection where
 instance Commentable Collection where
   hasComment a = colCommentCount a /= 0
   attachComment cli a =
-    (\c -> a {colComment = c})
+    bimap (\c -> a {colComment = c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment (pushHeader "comment" cli) StCollection (T.pack (show (colId a)))
 
-data ColItem = ColItem
-  { colItBody :: AnsOrArt,
-    colItRawData :: JSON.Value
-  }
+-- | api response contains more information than collection/item
+newtype ColItem = ColItem {colItBody :: AnsOrArt}
   deriving (Show)
+  deriving newtype (FromJSON, ToJSON, ShowId)
 
-deriveJSON defaultOptions {fieldLabelModifier = drop 5} ''ColItem
-
-instance ShowId ColItem where
-  showType = const "item"
-  showId v =
-    case colItBody v of
-      AoaAnswer a -> "answer_" ++ showId a
-      AoaArticle a -> "article_" ++ showId a
-
-instance ZhData ColItem where
-  parseRaw (Raw v) =
+instance FromRaw ColItem where
+  parseRaw =
     $( rawParser
          'ColItem
-         [ ('colItBody, FoParse "content" (PoBind [|fmap fixup . parseRaw . Raw|])),
-           ('colItRawData, FoRaw)
+         [ ('colItBody, foFromRaw "content")
          ]
      )
-      v
-    where
-      fixup =
-        \case
-          AoaAnswer a -> AoaAnswer (a {aRawData = JSON.Null})
-          AoaArticle a -> AoaArticle (a {artRawData = JSON.Null})
+
+instance ZhData ColItem
 
 instance Commentable ColItem where
   hasComment v = hasComment (colItBody v)
-  attachComment cli v = (\c -> v {colItBody = c}) <$> attachComment cli (colItBody v)
+  attachComment cli v = first (\c -> v {colItBody = c}) <$> attachComment cli (colItBody v)
 
 instance HasImage ColItem where
   fetchImage cli v = (\b -> v {colItBody = b}) <$> fetchImage cli (colItBody v)

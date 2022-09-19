@@ -5,14 +5,15 @@ module ZhArchiver.Item.AnsOrArt (AnsOrArt (..)) where
 
 import Data.Aeson.TH
 import Data.Aeson.Types
+import Data.Bifunctor
 import Data.Text (Text)
-import System.FilePath
 import ZhArchiver.Comment
 import ZhArchiver.Image
 import ZhArchiver.Item
 import ZhArchiver.Item.Answer (Answer)
 import ZhArchiver.Item.Article (Article)
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 
 data AnsOrArt
   = AoaArticle Article
@@ -28,24 +29,19 @@ instance ShowId AnsOrArt where
 
 deriveJSON defaultOptions {constructorTagModifier = drop 3} ''AnsOrArt
 
-instance ZhData AnsOrArt where
-  parseRaw (Raw v) =
+instance FromRaw AnsOrArt where
+  parseRaw v =
     withObject
       "CoItem"
       ( \o ->
           ((o .: "type") :: Parser Text) >>= \case
-            "answer" -> AoaAnswer <$> parseRaw (Raw v)
-            "article" -> AoaArticle <$> parseRaw (Raw v)
+            "answer" -> AoaAnswer <$> parseRaw v
+            "article" -> AoaArticle <$> parseRaw v
             _ -> error "unknown column item type"
       )
       v
-  saveData p v = case v of
-    AoaArticle a ->
-      withDirectory (p </> ("article_" ++ showId a)) $
-        encodeFilePretty "info.json" v
-    AoaAnswer a ->
-      withDirectory (p </> ("answer_" ++ showId a)) $
-        encodeFilePretty "info.json" v
+
+instance ZhData AnsOrArt
 
 instance HasImage AnsOrArt where
   fetchImage cli a =
@@ -57,5 +53,5 @@ instance Commentable AnsOrArt where
   hasComment (AoaArticle a) = hasComment a
   hasComment (AoaAnswer a) = hasComment a
 
-  attachComment cli (AoaArticle a) = AoaArticle <$> attachComment cli a
-  attachComment cli (AoaAnswer a) = AoaAnswer <$> attachComment cli a
+  attachComment cli (AoaArticle a) = first AoaArticle <$> attachComment cli a
+  attachComment cli (AoaAnswer a) = first AoaAnswer <$> attachComment cli a

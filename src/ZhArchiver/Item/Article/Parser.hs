@@ -4,7 +4,6 @@ module ZhArchiver.Item.Article.Parser (mkArticleParser) where
 
 import Data.Bifunctor (Bifunctor (first))
 import Language.Haskell.TH
-import ZhArchiver.Author
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.RawParser.TH
@@ -23,13 +22,12 @@ mkArticleParser hasTitleImg =
                   then FoParse "title_image" poImageMaybe
                   else FoConst [|Nothing|]
               ),
-              ("artAuthor", FoParse "author" poAuthor),
+              ("artAuthor", foFromRaw "author"),
               ("artCreate", FoParse "created" poTime),
               ("artUpdate", FoParse "updated" poTime),
               ("artVote", foStock "voteup_count"),
               ("artContent", FoParse "content" poContent),
               ("artCommentCount", foStock "comment_count"),
-              ("artComment", FoConst (listE [])),
-              ("artRawData", FoRaw)
+              ("artComment", FoConst (listE []))
             ]
     )

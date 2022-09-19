@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -6,15 +8,15 @@
 module ZhArchiver.Item.People (People (..), CollType (..)) where
 
 import Data.Aeson hiding (Value)
-import qualified Data.Aeson as JSON
-import Data.Aeson.TH
-import Data.Foldable
+import Data.Aeson.TH (deriveJSON)
+import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
 import System.FilePath
 import Text.URI
 import Text.URI.QQ
+import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
@@ -26,6 +28,7 @@ import ZhArchiver.Item.Collection
 import ZhArchiver.Item.Column
 import ZhArchiver.Item.Pin
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.RawParser.Util
 import ZhArchiver.Request.Paging
@@ -38,8 +41,7 @@ data People = People
     pHeadline :: Maybe Text,
     pDescription :: Maybe Content,
     pAvatar :: Image,
-    pCover :: Maybe Image,
-    pRawData :: JSON.Value
+    pCover :: Maybe Image
   }
   deriving (Show)
 
@@ -56,6 +58,22 @@ instance ShowId People where
   showType = const "people"
   showId People {pUrlToken = t} = T.unpack t
 
+instance FromRaw People where
+  parseRaw =
+    $( rawParser
+         'People
+         [ ('pId, FoParse "id" PoStock),
+           ('pUrlToken, FoParse "url_token" PoStock),
+           ('pName, FoParse "name" PoStock),
+           ('pHeadline, FoParse "headline" (PoMap [|unlessMaybe T.null|])),
+           ('pDescription, FoParse "description" poContentMaybe),
+           ('pAvatar, FoParse "avatar_url" poImage),
+           ('pCover, FoParse "cover_url" poImageMaybe)
+         ]
+     )
+
+instance ZhData People
+
 instance Item People where
   type IId People = Text
   type Signer People = ()
@@ -68,22 +86,6 @@ instance Item People where
         NoReqBody
         jsonResponse
         ("include" =: ("allow_message,is_followed,is_following,is_org,is_blocking,employments,answer_count,follower_count,articles_count,gender,badge[?(type=best_answerer)].topics;description;cover_url" :: Text))
-
-instance ZhData People where
-  parseRaw (Raw v) =
-    $( rawParser
-         'People
-         [ ('pId, FoParse "id" PoStock),
-           ('pUrlToken, FoParse "url_token" PoStock),
-           ('pName, FoParse "name" PoStock),
-           ('pHeadline, FoParse "headline" (PoMap [|unlessMaybe T.null|])),
-           ('pDescription, FoParse "description" poContentMaybe),
-           ('pAvatar, FoParse "avatar_url" poImage),
-           ('pCover, FoParse "cover_url" poImageMaybe),
-           ('pRawData, FoRaw)
-         ]
-     )
-      v
 
 instance ItemContainer People Answer where
   type ICOpt People Answer = ()
@@ -117,26 +119,22 @@ instance ItemContainer People Article where
         (zse96 zs)
   parseRawChild _ (Raw v) = $(mkArticleParser False) v
 
-data PeopleColumn = PCol {pcColumn :: Column, pcRawData :: JSON.Value}
+newtype PeopleColumn = PCol {pcColumn :: Column}
   deriving (Show)
+  deriving newtype (ShowId, FromJSON, ToJSON)
 
-instance ShowId PeopleColumn where
-  showType = const "column"
-  showId p = showId (pcColumn p)
-
-deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''PeopleColumn
-
-deriveHasImage ''PeopleColumn [('pcColumn, "column")]
-
-instance ZhData PeopleColumn where
-  parseRaw (Raw v) =
+instance FromRaw PeopleColumn where
+  parseRaw =
     $( rawParser
          'PCol
-         [ ('pcColumn, FoParse "column" (PoBind [|fmap (\c -> c {coRawData = JSON.Null}) . parseRaw . Raw|])),
-           ('pcRawData, FoRaw)
+         [ ('pcColumn, foFromRaw "column")
          ]
      )
-      v
+
+instance ZhData PeopleColumn
+
+instance HasImage PeopleColumn where
+  fetchImage cli PCol {pcColumn = p} = PCol <$> fetchImage cli p
 
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
@@ -152,6 +150,22 @@ instance ItemContainer People PeopleColumn where
               [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
           )
 
+newtype PeoplePin = PPin {pPin :: Pin}
+  deriving (Show)
+  deriving newtype (ShowId, FromJSON, ToJSON)
+
+instance FromRaw PeoplePin where
+  parseRaw = $(rawParser 'PPin [('pPin, foFromRaw "target")])
+
+instance ZhData PeoplePin
+
+instance Commentable PeoplePin where
+  hasComment = hasComment . pPin
+  attachComment cli p = first PPin <$> attachComment cli (pPin p)
+
+instance HasImage PeoplePin where
+  fetchImage cli p = PPin <$> fetchImage cli (pPin p)
+
 instance ItemContainer People Pin where
   type ICOpt People Pin = ()
   type ICSigner People Pin = ()
@@ -161,14 +175,6 @@ instance ItemContainer People Pin where
       <$> reqPaging
         cli
         (httpsURI sp [])
-  parseRawChild _ (Raw c) =
-    withObject
-      "people.pin"
-      ( \o -> do
-          v <- o .: "target" >>= parseRaw . Raw
-          return v {pinRawData = c}
-      )
-      c
 
 data CollType
   = CotCreated
@@ -197,13 +203,9 @@ instance ItemContainer People Collection where
                 sp
                 [QueryParam [queryKey|include|] [queryValue|data[*].updated_time,answer_count,follower_count,creator,description,is_following,comment_count,created_time|]]
             )
-  saveItems p t s =
-    traverse_
-      ( saveData
-          ( p </> showId s
-              </> ( case t of
-                      CotCreated -> "collection"
-                      CotLiked -> "following-favlist"
-                  )
+  childStorePath _ _ p t =
+    p
+      </> ( case t of
+              CotCreated -> "collection"
+              CotLiked -> "following-favlist"
           )
-      )

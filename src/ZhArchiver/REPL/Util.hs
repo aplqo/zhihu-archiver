@@ -24,19 +24,20 @@ import ZhArchiver.Item
 import ZhArchiver.Item.Answer
 import ZhArchiver.Item.Question
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.Request.Zse96V3
 
 data Config = Config
-  { cli :: Cli,
-    home, imgStore :: FilePath
+  { cfgCli :: Cli,
+    cfgHome, cfgImgStore :: FilePath
   }
 
 setupCfg :: Int -> FilePath -> FilePath -> Config
 setupCfg wid hom img =
   Config
-    { cli = defaultCli {cliMaxWidth = wid},
-      home = hom,
-      imgStore = img
+    { cfgCli = defaultCli {cliMaxWidth = wid},
+      cfgHome = hom,
+      cfgImgStore = img
     }
 
 type WithCfg a = ReaderT Config (ImgFetcher Req) a
@@ -44,46 +45,46 @@ type WithCfg a = ReaderT Config (ImgFetcher Req) a
 runCfg :: Config -> WithCfg a -> IO a
 runCfg cfg v = do
   (a, f) <- runReq defaultHttpConfig $ runImgFetcher $ runReaderT v cfg
-  saveImgFiles (imgStore cfg) f
+  saveImgFiles (cfgImgStore cfg) f
   putNewline
   return a
 
 pullItemWith ::
   forall a.
-  (Item a, HasImage a, ShowId a) =>
+  (Item a, HasImage a) =>
   (Cli -> a -> ImgFetcher Req a) ->
   Proxy a ->
   IId a ->
   Signer a ->
   WithCfg a
 pullItemWith com _ aid sign = do
-  cli <- asks (pushHeader (showType @a Proxy) . cli)
-  home <- asks home
+  cli <- asks (pushHeader (showType @a Proxy) . cfgCli)
+  home <- asks cfgHome
   r <- lift (fetchItem @a sign aid >>= com cli >>= fetchImage cli)
-  liftIO $ saveData (home </> showType @a Proxy) r
+  liftIO $ saveZhData (home </> showType @a Proxy) r
   return r
 
 pullItemI ::
   forall a.
-  (Item a, HasImage a, ShowId a) =>
+  (Item a, HasImage a) =>
   Proxy a ->
   IId a ->
   Signer a ->
-  WithCfg a
-pullItemI = pullItemWith (const pure)
+  WithCfg (WithRaw a)
+pullItemI _ = pullItemWith (const pure) Proxy
 
 pullItemCI ::
   forall a.
-  (Item a, Commentable a, HasImage a, ShowId a) =>
+  (Item a, Commentable a, HasImage a) =>
   Proxy a ->
   IId a ->
   Signer a ->
-  WithCfg a
-pullItemCI = pullItemWith attachComment
+  WithCfg (WithRaw a)
+pullItemCI _ = pullItemWith getComment Proxy
 
 pullChildWith ::
   forall a i.
-  (ItemContainer a i, HasImage i, ShowId a, ShowId i) =>
+  (ItemContainer a i, HasImage i) =>
   (Cli -> [i] -> ImgFetcher Req [i]) ->
   Proxy i ->
   ICOpt a i ->
@@ -92,33 +93,33 @@ pullChildWith ::
   WithCfg [i]
 pullChildWith com _ opt f sig =
   do
-    home <- asks home
-    cli <- asks (pushHeader (showType @i Proxy) . cli)
+    home <- asks cfgHome
+    cli <- asks (pushHeader (showType @i Proxy) . cfgCli)
     rs <- lift (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)
-    liftIO $ saveItems (home </> showType @a Proxy) opt f rs
+    liftIO $ storeChildItems @a @i Proxy (home </> showType @a Proxy </> showId f) opt rs
     return rs
 
 pullChildI ::
   forall a i.
-  (ItemContainer a i, HasImage i, ShowId a, ShowId i) =>
+  (ItemContainer a i, HasImage i) =>
   Proxy i ->
   ICOpt a i ->
   a ->
   ICSigner a i ->
-  WithCfg [i]
-pullChildI = pullChildWith (const pure)
+  WithCfg [WithRaw i]
+pullChildI _ = pullChildWith (const pure) Proxy
 
 pullChildCI ::
   forall a i.
-  (ItemContainer a i, Commentable i, HasImage i, ShowId a, ShowId i) =>
+  (ItemContainer a i, Commentable i, HasImage i) =>
   Proxy i ->
   ICOpt a i ->
   a ->
   ICSigner a i ->
-  WithCfg [i]
-pullChildCI = pullChildWith attachComment
+  WithCfg [WithRaw i]
+pullChildCI _ = pullChildWith @a @(WithRaw i) (`traverseP` getComment) Proxy
 
 pullQuestionAns :: ZseState -> QId -> WithCfg ()
 pullQuestionAns sign qid = do
   q <- pullItemCI @Question Proxy qid sign
-  void (pullChildCI @Question @Answer Proxy () q sign)
+  void (pullChildCI @Question @Answer Proxy () (wrVal q) sign)

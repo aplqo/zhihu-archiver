@@ -4,6 +4,7 @@ module ZhArchiver.RawParser.TH
   ( ParseOpt (..),
     FieldOpt (..),
     foStock,
+    foFromRaw,
     rawParser,
   )
 where
@@ -12,6 +13,7 @@ import Data.Aeson
 import Data.Bifunctor
 import Data.Maybe
 import Language.Haskell.TH
+import ZhArchiver.Raw
 
 data ParseOpt
   = PoStock
@@ -19,14 +21,16 @@ data ParseOpt
   | PoBind ExpQ
 
 data FieldOpt
-  = FoRaw
-  | FoParse String ParseOpt
+  = FoParse String ParseOpt
   | FoParseMaybe String Bool ParseOpt
   | FoConst ExpQ
   | FoCustom ExpQ
 
 foStock :: String -> FieldOpt
 foStock s = FoParse s PoStock
+
+foFromRaw :: String -> FieldOpt
+foFromRaw s = FoParse s (PoBind [|parseRaw|])
 
 rawParser :: Name -> [(Name, FieldOpt)] -> ExpQ
 rawParser typ fs = do
@@ -49,7 +53,6 @@ rawParser typ fs = do
         )
     )
   where
-    procField orig _ (n, FoRaw) = pure (Nothing, Just (n, VarE orig))
     procField _ _ (n, FoConst e) = (\c -> (Nothing, Just (n, c))) <$> e
     procField orig _ (n, FoCustom e) = do
       recFld <- newName "recFld"

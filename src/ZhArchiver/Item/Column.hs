@@ -5,9 +5,7 @@
 module ZhArchiver.Item.Column (Column (..)) where
 
 import Data.Aeson
-import qualified Data.Aeson as JSON
 import Data.Aeson.TH (deriveJSON)
-import Data.Foldable (traverse_)
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -20,6 +18,7 @@ import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt (AnsOrArt)
 import ZhArchiver.Progress
+import ZhArchiver.Raw
 import ZhArchiver.RawParser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
@@ -31,8 +30,7 @@ data Column = Column
     coVote :: Int64,
     coDescription, coIntro :: Maybe Content,
     coAuthor :: Author,
-    coImage :: Image,
-    coRawData :: JSON.Value
+    coImage :: Image
   }
   deriving (Show)
 
@@ -62,8 +60,8 @@ instance Item Column where
         jsonResponse
         ("include" =: ("created,intro" :: Text))
 
-instance ZhData Column where
-  parseRaw (Raw v) =
+instance FromRaw Column where
+  parseRaw =
     $( rawParser
          'Column
          [ ('coId, foStock "id"),
@@ -73,12 +71,12 @@ instance ZhData Column where
            ('coVote, foStock "voteup_count"),
            ('coDescription, FoParse "description" poContentMaybe),
            ('coIntro, FoParse "intro" poContentMaybe),
-           ('coAuthor, FoParse "author" poAuthor),
-           ('coImage, FoParse "image_url" poImage),
-           ('coRawData, FoRaw)
+           ('coAuthor, foFromRaw "author"),
+           ('coImage, FoParse "image_url" poImage)
          ]
      )
-      v
+
+instance ZhData Column
 
 instance ItemContainer Column AnsOrArt where
   type ICOpt Column AnsOrArt = Bool
@@ -91,5 +89,5 @@ instance ItemContainer Column AnsOrArt where
       else do
         sp1 <- $(apiPath "columns" "items") cid
         fmap Raw <$> reqPaging cli (httpsURI sp1 [])
-  saveItems p op c =
-    traverse_ (saveData (p </> showId c </> (if op then "pinned-item" else "item")))
+  childStorePath _ _ p op =
+    p </> (if op then "pinned-item" else "item")
