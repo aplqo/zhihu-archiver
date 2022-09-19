@@ -69,8 +69,7 @@ instance ZhData People
 
 instance Item People where
   newtype IId People = PId Text
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer People = ()
 
   fetchRaw _ (PId pid) =

@@ -72,8 +72,7 @@ instance ZhData Answer
 
 instance Item Answer where
   newtype IId Answer = AId Int64
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer Answer = ZseState
 
   fetchRaw zs aid =

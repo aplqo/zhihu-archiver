@@ -180,8 +180,7 @@ instance ZhData Pin
 
 instance Item Pin where
   newtype IId Pin = PinId Text
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer Pin = ()
   fetchRaw _ (PinId pid) =
     Raw . responseBody

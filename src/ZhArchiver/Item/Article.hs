@@ -49,8 +49,7 @@ instance ZhData Article
 
 instance Item Article where
   newtype IId Article = ArtId Int64
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer Article = ()
 
   fetchRaw _ (ArtId i) =

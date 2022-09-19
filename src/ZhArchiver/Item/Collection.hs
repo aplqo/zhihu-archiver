@@ -64,8 +64,7 @@ instance ZhData Collection
 
 instance Item Collection where
   newtype IId Collection = ColId Int
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer Collection = ()
   fetchRaw _ cid =
     Raw . responseBody

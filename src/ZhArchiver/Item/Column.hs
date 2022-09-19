@@ -45,8 +45,7 @@ instance ShowId Column where
 
 instance Item Column where
   newtype IId Column = CoId Text
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer Column = ()
   fetchRaw _ (CoId cid) =
     Raw . responseBody

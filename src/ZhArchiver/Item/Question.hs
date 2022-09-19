@@ -49,8 +49,7 @@ instance ShowId Question where
 
 instance Item Question where
   newtype IId Question = QId Int
-    deriving (Show)
-    deriving newtype (FromJSON, ToJSON)
+    deriving newtype (Show, FromJSON, ToJSON)
   type Signer Question = ZseState
   fetchRaw zs (QId qid) =
     Raw . responseBody
