@@ -14,6 +14,7 @@ module ZhArchiver.REPL.Util
     pullChildCI,
     pullChildCID,
     pullQuestionAns,
+    pullColumn,
   )
 where
 
@@ -31,7 +32,9 @@ import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Item
+import ZhArchiver.Item.AnsOrArt
 import ZhArchiver.Item.Answer
+import ZhArchiver.Item.Column
 import ZhArchiver.Item.Question
 import ZhArchiver.Progress
 import ZhArchiver.REPL.FilePath
@@ -189,3 +192,9 @@ pullQuestionAns :: ZseState -> IId (WithRaw Question) -> WithCfg ()
 pullQuestionAns sign qid = do
   q <- pullItemCI @Question qid sign
   void (pullChildCID @Question @Answer Proxy () (wrVal q) sign)
+
+pullColumn :: IId (WithRaw Column) -> WithCfg ()
+pullColumn iid = do
+  c <- wrVal <$> pullItemI @Column iid ()
+  void (pullChildCID @Column @AnsOrArt Proxy True c ())
+  void (pullChildCID @Column @AnsOrArt Proxy False c ())
