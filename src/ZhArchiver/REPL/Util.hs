@@ -19,7 +19,6 @@ where
 import Control.Monad.Reader
 import Data.Default
 import Data.Maybe
-import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Typeable
 import Network.HTTP.Req
@@ -50,8 +49,14 @@ saveContent doc img cli a = do
   createDirectoryIfMissing True doc
   showMessage cli "Convert content to markdown"
   case con of
-    Just cont -> TIO.writeFile (doc </> showValName a <.> "md") cont
+    Just cont -> TIO.writeFile (doc </> escapeSlash (showValName a) <.> "md") cont
     Nothing -> pure ()
+  where
+    escapeSlash [] = []
+    escapeSlash (x : xs) =
+      if x == '/'
+        then '%' : '2' : 'F' : escapeSlash xs
+        else x : escapeSlash xs
 
 data Config = Config
   { cfgCli :: Cli,
