@@ -165,7 +165,7 @@ instance ItemContainer People PeopleColumn where
 
 newtype PeoplePin = PPin {pPin :: Pin}
   deriving (Show)
-  deriving newtype (ShowId, FromJSON, ToJSON, HasContent)
+  deriving newtype (ShowId, ShowName, FromJSON, ToJSON, HasContent)
 
 instance FromRaw PeoplePin where
   parseRaw = $(rawParser 'PPin [('pPin, foFromRaw "target")])
