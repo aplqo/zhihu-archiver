@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module ZhArchiver.REPL.Util
@@ -81,18 +82,18 @@ runCfg cfg v = do
   putNewline
   return a
 
-typCli :: (ShowId a) => Proxy a -> WithCfg Cli
-typCli p = asks (pushHeader (showType p) . cfgCli)
+itemCli :: forall a. (ShowId a, Show (IId a)) => IId a -> WithCfg Cli
+itemCli v = asks (pushHeader (showType @a Proxy ++ " " ++ show v) . cfgCli)
 
 pullItemWith ::
   forall a.
-  (Item a, HasImage a) =>
+  (Item a, HasImage a, Show (IId a)) =>
   (Cli -> a -> ImgFetcher Req a) ->
   IId a ->
   Signer a ->
   WithCfg a
 pullItemWith com aid sign = do
-  cli <- typCli @a Proxy
+  cli <- itemCli aid
   home <- asks cfgHome
   r <- lift (fetchItem @a sign aid >>= com cli >>= fetchImage cli)
   liftIO $ saveZhData (home </> showType @a Proxy) r
@@ -100,14 +101,14 @@ pullItemWith com aid sign = do
 
 pullItemI ::
   forall a.
-  (Item a, HasImage a) =>
+  (Item a, HasImage a, Show (IId a)) =>
   IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
 pullItemI = pullItemWith (const pure)
 
 pullItemCI ::
-  (Item a, Commentable a, HasImage a) =>
+  (Item a, Commentable a, HasImage a, Show (IId a)) =>
   IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
@@ -115,17 +116,20 @@ pullItemCI = pullItemWith getComment
 
 pullItemCID ::
   forall a.
-  (Item a, Commentable a, HasImage a, HasContent a, ShowName a) =>
+  (Item a, Commentable a, HasImage a, HasContent a, ShowName a, Show (IId a)) =>
   IId (WithRaw a) ->
   Signer a ->
   WithCfg (WithRaw a)
 pullItemCID iid sig = do
   dat <- pullItemCI iid sig
 
-  cli <- typCli @a Proxy
+  cli <- itemCli iid
   Config {cfgDoc = doc, cfgImgStore = img} <- ask
   liftIO (saveContent (doc </> showType @a Proxy) img cli dat)
   return dat
+
+childCli :: forall a i. (ShowId a, ShowId i) => a -> Proxy i -> WithCfg Cli
+childCli a p = asks (pushHeader (showType p) . pushHeader (showValId a) . cfgCli)
 
 pullChildWith ::
   forall a i.
@@ -139,7 +143,7 @@ pullChildWith ::
 pullChildWith com _ opt f sig =
   do
     home <- asks cfgHome
-    cli <- typCli @i Proxy
+    cli <- childCli f (Proxy @i)
     rs <- lift (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)
     liftIO $ storeChildItems @a @i Proxy (home </> showType @a Proxy </> showId f) opt rs
     return rs
@@ -177,7 +181,7 @@ pullChildCID _ opt f sig = do
 
   docs <- asks (\cfg -> childStorePath @a @i Proxy Proxy (cfgDoc cfg </> showType @a Proxy </> showValName f) opt)
   img <- asks cfgImgStore
-  cli <- typCli @i Proxy
+  cli <- childCli f (Proxy @i)
   void (liftIO (traverseP cli (saveContent docs img) dats))
   return dats
 

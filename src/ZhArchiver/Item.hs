@@ -1,7 +1,10 @@
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -64,6 +67,8 @@ instance (Item a) => Item (WithRaw a) where
   newtype IId (WithRaw a) = Wr {unWr :: IId a}
   type Signer (WithRaw a) = Signer a
   fetchRaw s i = Raw . unRaw <$> fetchRaw @a s (unWr i)
+
+deriving newtype instance (Show (IId a)) => Show (IId (WithRaw a))
 
 fetchItem :: (Item a, MonadHttp m, MonadThrow m) => Signer a -> IId a -> m a
 fetchItem s i = runRawParser parseRaw <$> fetchRaw s i
