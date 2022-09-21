@@ -9,13 +9,18 @@ import Control.Monad.Except
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy as LBS
+import System.Directory
 
 encodeFilePretty :: (ToJSON a) => FilePath -> a -> IO ()
 encodeFilePretty p a =
-  LBS.writeFile
-    p
-    ( encodePretty' defConfig {confIndent = Spaces 2} a
-    )
+  doesFileExist p >>= \exi ->
+    if exi
+      then error (p ++ " is exist. Not allowed to overwrite file")
+      else
+        LBS.writeFile
+          p
+          ( encodePretty' defConfig {confIndent = Spaces 2} a
+          )
 
 type Decoder = ExceptT String IO
 
