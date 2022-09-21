@@ -11,6 +11,7 @@
 module ZhArchiver.Item
   ( ZhData (..),
     saveZhData,
+    loadZhDataDir,
     Item (..),
     IId (..),
     fetchItem,
@@ -21,6 +22,7 @@ module ZhArchiver.Item
   )
 where
 
+import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Aeson.Types
@@ -57,6 +59,10 @@ saveZhData :: (ZhData a) => FilePath -> a -> IO ()
 saveZhData p v =
   let dir = p </> showId v
    in createDirectoryIfMissing True dir >> storeData dir v
+
+loadZhDataDir :: (ZhData a) => FilePath -> Decoder [a]
+loadZhDataDir p =
+  liftIO (getDirectoryContents p >>= filterM doesFileExist) >>= traverse loadData
 
 class (ZhData a) => Item a where
   data IId a
