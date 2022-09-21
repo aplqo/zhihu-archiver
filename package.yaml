@@ -68,6 +68,10 @@ library:
   - pandoc
   - pandoc-types
   - data-default
+  other-modules:
+  - ZhArchiver.Image.TH
+  - ZhArchiver.Raw.Parser.TH
+  - ZhArchiver.Raw.Parser.Util
 
 executables:
   zhihu-dl:

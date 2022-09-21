@@ -1,4 +1,4 @@
-module ZhArchiver.RawParser.Util (appUnless, unlessMaybe) where
+module ZhArchiver.Raw.Parser.Util (appUnless, unlessMaybe) where
 
 appUnless :: (a -> Bool) -> (a -> b) -> a -> Maybe b
 appUnless p r v =

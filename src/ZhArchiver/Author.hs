@@ -12,8 +12,8 @@ import Data.Text (Text)
 import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
-import ZhArchiver.RawParser.Util
+import ZhArchiver.Raw.Parser.TH
+import ZhArchiver.Raw.Parser.Util
 
 data Author = Author
   { auId, auUrlToken, auName, auHeadline :: Text,

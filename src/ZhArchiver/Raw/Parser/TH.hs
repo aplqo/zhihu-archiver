@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
-module ZhArchiver.RawParser.TH
+module ZhArchiver.Raw.Parser.TH
   ( ParseOpt (..),
     FieldOpt (..),
     foStock,

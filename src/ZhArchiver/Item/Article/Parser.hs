@@ -6,7 +6,7 @@ import Data.Bifunctor (Bifunctor (first))
 import Language.Haskell.TH
 import ZhArchiver.Content
 import ZhArchiver.Image
-import ZhArchiver.RawParser.TH
+import ZhArchiver.Raw.Parser.TH
 import ZhArchiver.Types
 
 mkArticleParser :: Bool -> ExpQ

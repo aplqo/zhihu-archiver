@@ -30,7 +30,6 @@ library
       ZhArchiver.Comment
       ZhArchiver.Content
       ZhArchiver.Image
-      ZhArchiver.Image.TH
       ZhArchiver.Item
       ZhArchiver.Item.AnsOrArt
       ZhArchiver.Item.Answer
@@ -44,8 +43,6 @@ library
       ZhArchiver.Item.Question
       ZhArchiver.Progress
       ZhArchiver.Raw
-      ZhArchiver.RawParser.TH
-      ZhArchiver.RawParser.Util
       ZhArchiver.REPL.FilePath
       ZhArchiver.REPL.Util
       ZhArchiver.Request.Paging
@@ -54,9 +51,9 @@ library
       ZhArchiver.Types
       ZhArchiver.Util
   other-modules:
-      Paths_zhihu_archiver
-  autogen-modules:
-      Paths_zhihu_archiver
+      ZhArchiver.Image.TH
+      ZhArchiver.Raw.Parser.TH
+      ZhArchiver.Raw.Parser.Util
   hs-source-dirs:
       src
   default-extensions:

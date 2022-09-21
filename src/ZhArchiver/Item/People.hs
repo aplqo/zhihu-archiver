@@ -37,8 +37,8 @@ import ZhArchiver.Item.Column
 import ZhArchiver.Item.Pin
 import ZhArchiver.Progress
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
-import ZhArchiver.RawParser.Util
+import ZhArchiver.Raw.Parser.TH
+import ZhArchiver.Raw.Parser.Util
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Request.Zse96V3

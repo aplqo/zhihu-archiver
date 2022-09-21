@@ -11,7 +11,7 @@ where
 
 import Data.Time.Clock.System
 import Data.Time.LocalTime
-import ZhArchiver.RawParser.TH
+import ZhArchiver.Raw.Parser.TH
 
 type Id = Int
 

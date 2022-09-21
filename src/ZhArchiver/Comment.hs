@@ -31,7 +31,7 @@ import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Progress
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.Util
+import ZhArchiver.Raw.Parser.Util
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types

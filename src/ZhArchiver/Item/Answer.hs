@@ -22,7 +22,7 @@ import ZhArchiver.Item
 import {-# SOURCE #-} ZhArchiver.Item.Question
 import ZhArchiver.Progress
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
+import ZhArchiver.Raw.Parser.TH
 import ZhArchiver.Request.Zse96V3
 import ZhArchiver.Types
 

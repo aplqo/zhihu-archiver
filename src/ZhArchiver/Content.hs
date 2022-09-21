@@ -32,8 +32,8 @@ import ZhArchiver.Image
     lookupLocalPath,
   )
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
-import ZhArchiver.RawParser.Util
+import ZhArchiver.Raw.Parser.TH
+import ZhArchiver.Raw.Parser.Util
 
 newtype Html = Html {htmlText :: Text}
   deriving (Show)

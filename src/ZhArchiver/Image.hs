@@ -56,8 +56,8 @@ import Text.HTML.TagSoup
 import Text.URI
 import ZhArchiver.Progress
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
-import ZhArchiver.RawParser.Util
+import ZhArchiver.Raw.Parser.TH
+import ZhArchiver.Raw.Parser.Util
 
 newtype ImgDigest = ImgDigest (Digest SHA256)
   deriving newtype (Show)

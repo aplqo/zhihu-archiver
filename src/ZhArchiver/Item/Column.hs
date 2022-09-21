@@ -22,7 +22,7 @@ import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt (AnsOrArt)
 import ZhArchiver.Progress
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
+import ZhArchiver.Raw.Parser.TH
 import ZhArchiver.Request.Paging
 import ZhArchiver.Request.Uri hiding (https)
 import ZhArchiver.Types

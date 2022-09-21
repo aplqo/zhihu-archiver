@@ -28,8 +28,8 @@ import ZhArchiver.Image.TH
 import ZhArchiver.Item
 import ZhArchiver.Progress
 import ZhArchiver.Raw
-import ZhArchiver.RawParser.TH
-import ZhArchiver.RawParser.Util
+import ZhArchiver.Raw.Parser.TH
+import ZhArchiver.Raw.Parser.Util
 import ZhArchiver.Types
 
 data PinContent
