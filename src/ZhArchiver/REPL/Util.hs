@@ -99,7 +99,7 @@ pullItemWith com aid sign = do
   cli <- itemCli aid
   home <- asks cfgHome
   r <- lift (fetchItem @a sign aid >>= com cli >>= fetchImage cli)
-  liftIO $ saveZhData (home </> showType @a Proxy) r
+  liftIO $ saveZhData False (home </> showType @a Proxy) r
   return r
 
 pullItemI ::
@@ -148,7 +148,7 @@ pullChildWith com _ opt f sig =
     home <- asks cfgHome
     cli <- childCli f (Proxy @i)
     rs <- lift (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)
-    liftIO $ storeChildItems @a @i Proxy (home </> showType @a Proxy </> showId f) opt rs
+    liftIO $ storeChildItems @a @i Proxy False (home </> showType @a Proxy </> showId f) opt rs
     return rs
 
 pullChildI ::

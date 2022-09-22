@@ -95,9 +95,9 @@ instance (FromRaw a) => FromRaw (WithRaw a) where
           wrRawData = Just (singletonRm "main" (RtLeaf v))
         }
 
-storeRaw :: FilePath -> WithRaw a -> IO ()
-storeRaw _ WithRaw {wrRawData = Nothing} = pure ()
-storeRaw p WithRaw {wrRawData = Just rd} =
+storeRaw :: Bool -> FilePath -> WithRaw a -> IO ()
+storeRaw _ _ WithRaw {wrRawData = Nothing} = pure ()
+storeRaw ov p WithRaw {wrRawData = Just rd} =
   withCurrentDirectory p $
     createDirectoryIfMissing False "raw"
       >> withCurrentDirectory "raw" (write rd)
@@ -106,7 +106,7 @@ storeRaw p WithRaw {wrRawData = Just rd} =
       traverse_
         ( \(k, v) ->
             case v of
-              RtLeaf l -> encodeFilePretty (k <.> "json") l
+              RtLeaf l -> encodeFilePretty ov (k <.> "json") l
               RtBranch b ->
                 unless (LHM.null b) $
                   createDirectoryIfMissing True k

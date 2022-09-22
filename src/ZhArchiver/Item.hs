@@ -42,27 +42,27 @@ import ZhArchiver.Util
 -}
 
 class (FromRaw d, ShowId d) => ZhData d where
-  storeData :: FilePath -> d -> IO ()
-  default storeData :: (ToJSON d) => FilePath -> d -> IO ()
-  storeData p = encodeFilePretty (p </> "info.json")
+  storeData :: Bool -> FilePath -> d -> IO ()
+  default storeData :: (ToJSON d) => Bool -> FilePath -> d -> IO ()
+  storeData ov p = encodeFilePretty ov (p </> "info.json")
 
   loadData :: FilePath -> Decoder d
   default loadData :: (FromJSON d) => FilePath -> Decoder d
   loadData p = decodeFile (p </> "info.json")
 
 instance (ZhData a) => ZhData (WithRaw a) where
-  storeData p r@(WithRaw {wrVal = v}) =
-    storeData p v >> storeRaw p r
+  storeData ov p r@(WithRaw {wrVal = v}) =
+    storeData ov p v >> storeRaw ov p r
   loadData p = loadData p >>= attachRaw p
 
-saveZhData :: (ZhData a) => FilePath -> a -> IO ()
-saveZhData p v =
+saveZhData :: (ZhData a) => Bool -> FilePath -> a -> IO ()
+saveZhData ov p v =
   let dir = p </> showId v
-   in createDirectoryIfMissing True dir >> storeData dir v
+   in createDirectoryIfMissing True dir >> storeData ov dir v
 
 loadZhDataDir :: (ZhData a) => FilePath -> Decoder [a]
 loadZhDataDir p =
-  liftIO (getDirectoryContents p >>= filterM doesFileExist) >>= traverse loadData
+  liftIO (listDirectory p >>= filterM doesDirectoryExist . fmap (p </>)) >>= traverse loadData
 
 class (ZhData a) => Item a where
   data IId a
@@ -123,6 +123,6 @@ fetchChildItems cli opt sig v =
   fmap (runParser (parseRawChild v))
     <$> fetchItemsRaw cli opt sig v
 
-storeChildItems :: forall a i. (ItemContainer a i) => Proxy a -> FilePath -> ICOpt a i -> [i] -> IO ()
-storeChildItems _ p opt =
-  traverse_ (saveZhData (childStorePath @a @i Proxy Proxy p opt))
+storeChildItems :: forall a i. (ItemContainer a i) => Proxy a -> Bool -> FilePath -> ICOpt a i -> [i] -> IO ()
+storeChildItems _ ov p opt =
+  traverse_ (saveZhData ov (childStorePath @a @i Proxy Proxy p opt))
