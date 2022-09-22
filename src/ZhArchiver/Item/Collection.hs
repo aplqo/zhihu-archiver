@@ -9,7 +9,7 @@
 module ZhArchiver.Item.Collection (IId (..), Collection (..), ColItem (..)) where
 
 import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -39,12 +39,7 @@ data Collection = Collection
     colComment :: [Comment]
   }
 
-$( concat
-     <$> sequence
-       [ deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Collection,
-         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Collection
-       ]
- )
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Collection
 
 instance ShowId Collection where
   showType = const "collection"

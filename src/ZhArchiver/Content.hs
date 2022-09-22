@@ -18,7 +18,7 @@ where
 
 import Control.Monad
 import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import Data.Default
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -51,8 +51,7 @@ data Content = Content
   }
   deriving (Show)
 
-deriveFromJSON defaultOptions {fieldLabelModifier = drop 4} ''Content
-deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 4} ''Content
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 4} ''Content
 
 instance HasImage Content where
   fetchImage cli c =

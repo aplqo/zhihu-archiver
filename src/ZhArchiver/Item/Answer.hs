@@ -7,7 +7,7 @@
 module ZhArchiver.Item.Answer (IId (..), Answer (..)) where
 
 import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import Data.Bifunctor
 import Data.Int (Int64)
 import Data.Text (Text)
@@ -37,12 +37,7 @@ data Answer = Answer
     aComment :: [Comment]
   }
 
-$( concat
-     <$> sequence
-       [ deriveFromJSON defaultOptions {fieldLabelModifier = tail} ''Answer,
-         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''Answer
-       ]
- )
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''Answer
 
 instance ShowId Answer where
   showType = const "answer"

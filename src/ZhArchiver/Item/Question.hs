@@ -9,7 +9,7 @@
 module ZhArchiver.Item.Question (IId (..), Question (..)) where
 
 import Data.Aeson hiding (Value)
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -42,12 +42,7 @@ data Question = Question
     qComments :: [Comment]
   }
 
-$( concat
-     <$> sequence
-       [ deriveFromJSON defaultOptions {fieldLabelModifier = tail} ''Question,
-         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''Question
-       ]
- )
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''Question
 
 instance ShowId Question where
   showType = const "question"

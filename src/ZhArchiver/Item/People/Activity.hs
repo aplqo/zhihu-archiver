@@ -10,7 +10,7 @@ module ZhArchiver.Item.People.Activity
 where
 
 import Data.Aeson
-import Data.Aeson.TH 
+import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Bifunctor
 import Data.Text (Text)
@@ -43,8 +43,7 @@ data ActTarget
   | ActOther Text
   deriving (Show)
 
-deriveFromJSON defaultOptions {constructorTagModifier = drop 3} ''ActTarget
-deriveToJSON defaultOptions {constructorTagModifier = camelTo2 '_' . drop 3} ''ActTarget
+deriveJSON defaultOptions {constructorTagModifier = camelTo2 '_' . drop 3} ''ActTarget
 
 data Activity = Activity
   { actId :: Text,
@@ -52,8 +51,7 @@ data Activity = Activity
     actTarget :: ActTarget
   }
 
-deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Activity
-deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Activity
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Activity
 
 instance ShowId Activity where
   showType = const "activity"

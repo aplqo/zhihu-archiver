@@ -31,7 +31,7 @@ import Control.Monad.State
 import Crypto.Hash
 import Data.Aeson hiding (String, Value)
 import qualified Data.Aeson as JSON
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import qualified Data.ByteArray as BA
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -79,8 +79,7 @@ data ImgRef = ImgRef
   }
   deriving (Eq, Show)
 
-deriveFromJSON defaultOptions {fieldLabelModifier = drop 6} ''ImgRef
-deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 6} ''ImgRef
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 6} ''ImgRef
 
 instance Hashable ImgRef where
   hashWithSalt s i = hashWithSalt s (refImgType i, refImgDigest i)
@@ -94,8 +93,7 @@ data Image = Image
   }
   deriving (Eq, Show)
 
-deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Image
-deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Image
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Image
 
 imgFromUrl :: Text -> Image
 imgFromUrl u = Image {imgUrl = u, imgRef = Nothing}

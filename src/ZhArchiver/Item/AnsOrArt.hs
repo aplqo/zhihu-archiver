@@ -3,7 +3,7 @@
 
 module ZhArchiver.Item.AnsOrArt (AnsOrArt (..)) where
 
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Bifunctor
 import Data.Text (Text)
@@ -36,8 +36,7 @@ instance ShowName AnsOrArt where
   showName (AoaAnswer a) = showName a
   showName (AoaArticle a) = showName a
 
-deriveFromJSON defaultOptions {constructorTagModifier = drop 3} ''AnsOrArt
-deriveToJSON defaultOptions {constructorTagModifier = camelTo2 '_' . drop 3} ''AnsOrArt
+deriveJSON defaultOptions {constructorTagModifier = camelTo2 '_' . drop 3} ''AnsOrArt
 
 instance FromRaw AnsOrArt where
   parseRaw v =

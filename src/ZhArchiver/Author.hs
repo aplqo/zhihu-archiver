@@ -7,7 +7,7 @@ module ZhArchiver.Author
 where
 
 import Data.Aeson hiding (Value)
-import Data.Aeson.TH
+import Data.Aeson.TH (deriveJSON)
 import Data.Text (Text)
 import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
@@ -21,8 +21,7 @@ data Author = Author
   }
   deriving (Show)
 
-deriveFromJSON defaultOptions {fieldLabelModifier = drop 2} ''Author
-deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 2} ''Author
+deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 2} ''Author
 
 deriveHasImage ''Author [('auAvatar, "avatar")]
 
