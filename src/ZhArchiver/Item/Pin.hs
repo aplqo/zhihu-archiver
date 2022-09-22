@@ -9,7 +9,7 @@ module ZhArchiver.Item.Pin (PinContent (..), PinBody (..), IId (..), Pin (..)) w
 
 import Control.Applicative
 import Data.Aeson
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH
 import Data.Aeson.Types
 import Data.Bifunctor
 import Data.Int (Int64)
@@ -45,10 +45,16 @@ data PinContent
   | PcUnknown
   deriving (Show)
 
-deriveJSON
+deriveFromJSON
   defaultOptions
     { fieldLabelModifier = drop 2,
       constructorTagModifier = drop 2
+    }
+  ''PinContent
+deriveToJSON
+  defaultOptions
+    { fieldLabelModifier = camelTo2 '_' . drop 2,
+      constructorTagModifier = camelTo2 '_' . drop 2
     }
   ''PinContent
 
@@ -116,8 +122,10 @@ data Pin = Pin
 $( concat
      <$> sequenceA
        [ -- JSON instances
-         deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Pin,
-         deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''PinBody,
+         deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Pin,
+         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Pin,
+         deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''PinBody,
+         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''PinBody,
          -- HasImage instances
          deriveHasImage
            ''PinBody

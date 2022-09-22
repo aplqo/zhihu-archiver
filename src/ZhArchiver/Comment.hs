@@ -14,7 +14,7 @@ import Control.Monad.Catch (MonadThrow)
 import Control.Monad.IO.Class
 import Data.Aeson hiding (Value)
 import qualified Data.Aeson as JSON
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH
 import Data.Aeson.Types (parseMaybe)
 import Data.Bifunctor
 import qualified Data.HashMap.Strict as HM
@@ -54,7 +54,8 @@ data Comment = Comment
   }
   deriving (Show)
 
-deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Comment
+deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Comment
+deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Comment
 
 instance ShowId Comment where
   showType = const "comment"

@@ -7,7 +7,7 @@
 module ZhArchiver.Item.Article (IId (..), Article (..)) where
 
 import Data.Aeson
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH
 import Data.Bifunctor
 import Data.Int (Int64)
 import Data.Text (Text)
@@ -37,7 +37,12 @@ data Article = Article
     artComment :: [Comment]
   }
 
-deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Article
+$( concat
+     <$> sequence
+       [ deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Article,
+         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Article
+       ]
+ )
 
 instance ShowId Article where
   showType = const "article"

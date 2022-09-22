@@ -39,7 +39,12 @@ data Collection = Collection
     colComment :: [Comment]
   }
 
-deriveJSON defaultOptions {fieldLabelModifier = drop 3} ''Collection
+$( concat
+     <$> sequence
+       [ deriveFromJSON defaultOptions {fieldLabelModifier = drop 3} ''Collection,
+         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Collection
+       ]
+ )
 
 instance ShowId Collection where
   showType = const "collection"

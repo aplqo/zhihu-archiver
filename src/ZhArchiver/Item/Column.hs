@@ -8,7 +8,7 @@
 module ZhArchiver.Item.Column (IId (..), Column (..)) where
 
 import Data.Aeson
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -37,7 +37,12 @@ data Column = Column
     coImage :: Image
   }
 
-deriveJSON defaultOptions {fieldLabelModifier = drop 2} ''Column
+$( concat
+     <$> sequence
+       [ deriveFromJSON defaultOptions {fieldLabelModifier = drop 2} ''Column,
+         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 2} ''Column
+       ]
+ )
 
 instance ShowId Column where
   showType = const "column"

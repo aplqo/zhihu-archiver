@@ -16,7 +16,7 @@ module ZhArchiver.Item.People
 where
 
 import Data.Aeson hiding (Value)
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH
 import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -52,7 +52,12 @@ data People = People
     pCover :: Maybe Image
   }
 
-deriveJSON defaultOptions {fieldLabelModifier = tail} ''People
+$( concat
+     <$> sequence
+       [ deriveFromJSON defaultOptions {fieldLabelModifier = tail} ''People,
+         deriveToJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''People
+       ]
+ )
 
 instance ShowId People where
   showType = const "people"

@@ -36,7 +36,8 @@ instance ShowName AnsOrArt where
   showName (AoaAnswer a) = showName a
   showName (AoaArticle a) = showName a
 
-deriveJSON defaultOptions {constructorTagModifier = drop 3} ''AnsOrArt
+deriveFromJSON defaultOptions {constructorTagModifier = drop 3} ''AnsOrArt
+deriveToJSON defaultOptions {constructorTagModifier = camelTo2 '_' . drop 3} ''AnsOrArt
 
 instance FromRaw AnsOrArt where
   parseRaw v =
