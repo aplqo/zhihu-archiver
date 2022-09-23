@@ -13,6 +13,7 @@ import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Bifunctor
+import qualified Data.HashSet as HS
 import Data.Text (Text)
 import qualified Data.Text as T
 import ZhArchiver.Comment
@@ -142,6 +143,16 @@ instance HasImage Activity where
               ActQuestion q -> ActQuestion <$> fetchImage cli q
               o@(ActOther _) -> pure o
           )
+  imageSet v =
+    case actTarget v of
+      ActAnswer a -> imageSet a
+      ActArticle a -> imageSet a
+      ActColumn a -> imageSet a
+      ActCollection a -> imageSet a
+      ActPeople p -> imageSet p
+      ActPin p -> imageSet p
+      ActQuestion q -> imageSet q
+      ActOther _ -> HS.empty
 
 instance ItemContainer People Activity where
   type ICOpt People Activity = ()

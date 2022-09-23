@@ -32,7 +32,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
-module ZhArchiver.REPL.FilePath (makeRelativeEx) where
+module ZhArchiver.Util.FilePath (makeRelativeEx) where
 
 import System.Directory
 import System.FilePath

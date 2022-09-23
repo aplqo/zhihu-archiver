@@ -12,6 +12,7 @@ import Data.Aeson
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types
 import Data.Bifunctor
+import qualified Data.HashSet as HS
 import Data.Int (Int64)
 import Data.Maybe
 import Data.Text (Text)
@@ -65,6 +66,13 @@ instance HasImage PinContent where
   fetchImage cli p@(PcLink {pcLinkImage = i}) =
     (\img -> p {pcLinkImage = img}) <$> fetchImage (pushHeader "link-img" cli) i
   fetchImage _ PcUnknown = pure PcUnknown
+
+  imageSet v =
+    case v of
+      PcText t -> imageSet t
+      PcImage {pcOriginal = orig, pcImage = i} -> HS.union (imageSet orig) (imageSet i)
+      PcLink {pcLinkImage = img} -> imageSet img
+      PcUnknown -> HS.empty
 
 instance FromRaw PinContent where
   parseRaw =

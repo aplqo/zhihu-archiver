@@ -37,9 +37,9 @@ import ZhArchiver.Item.Answer
 import ZhArchiver.Item.Column
 import ZhArchiver.Item.Question
 import ZhArchiver.Progress
-import ZhArchiver.REPL.FilePath
 import ZhArchiver.Raw
 import ZhArchiver.Request.Zse96V3
+import ZhArchiver.Util.FilePath
 
 saveContent :: (ShowId a, ShowName a, HasContent a) => FilePath -> FilePath -> Cli -> a -> IO ()
 saveContent doc img cli a = do
@@ -81,7 +81,7 @@ type WithCfg a = ReaderT Config (ImgFetcher Req) a
 runCfg :: Config -> WithCfg a -> IO a
 runCfg cfg v = do
   (a, f) <- runReq defaultHttpConfig $ runImgFetcher $ runReaderT v cfg
-  saveImgFiles (cfgImgStore cfg) f
+  -- saveImgFiles (cfgImgStore cfg) f
   putNewline
   return a
 

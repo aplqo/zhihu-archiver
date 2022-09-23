@@ -114,6 +114,7 @@ instance Commentable ColItem where
 
 instance HasImage ColItem where
   fetchImage cli v = (\b -> v {colItBody = b}) <$> fetchImage cli (colItBody v)
+  imageSet = imageSet . colItBody
 
 instance ItemContainer Collection ColItem where
   type ICOpt Collection ColItem = ()

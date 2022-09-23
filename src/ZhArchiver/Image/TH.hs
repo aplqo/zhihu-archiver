@@ -2,6 +2,7 @@
 
 module ZhArchiver.Image.TH (deriveHasImage) where
 
+import qualified Data.HashSet as HS
 import Language.Haskell.TH
 import ZhArchiver.Image
 import ZhArchiver.Progress
@@ -12,21 +13,24 @@ deriveHasImage n [] =
     reportWarning "No field is a instance of HasImage"
     [d|
       instance HasImage $(pure $ ConT n) where
-        fetchImage _ = pure
+        fetchImage = const pure
+        imageSet = const HS.empty
       |]
 deriveHasImage n fields = do
-  orig <- newName "orig"
-  cli <- newName "cli"
-  (stmts, expr) <- unzip <$> traverse (procField orig cli) fields
+  (fCli, fOrig, fetch) <- procFetch
+  (sOrig, set) <- procSet
   [d|
     instance HasImage $(pure $ ConT n) where
-      fetchImage $(varP cli) $(varP orig) =
-        $( pure
-             ( DoE Nothing (stmts ++ [NoBindS (AppE (VarE 'return) (RecUpdE (VarE orig) expr))])
-             )
-         )
+      fetchImage $(varP fCli) $(varP fOrig) = $(pure fetch)
+      imageSet $(varP sOrig) = $(pure set)
     |]
   where
+    procFetch = do
+      orig <- newName "orig"
+      cli <- newName "cli"
+      (stmts, expr) <- unzip <$> traverse (procField orig cli) fields
+      return
+        (cli, orig, DoE Nothing (stmts ++ [NoBindS (AppE (VarE 'return) (RecUpdE (VarE orig) expr))]))
     procField :: Name -> Name -> (Name, String) -> Q (Stmt, FieldExp)
     procField v cli (fn, l) =
       ( \tp ->
@@ -40,3 +44,8 @@ deriveHasImage n fields = do
           )
       )
         <$> newName "f"
+
+    procSet = do
+      orig <- newName "orig"
+      let fs = ListE (fmap ((\f -> VarE 'imageSet `AppE` (VarE f `AppE` VarE orig)) . fst) fields)
+      return (orig, VarE 'HS.unions `AppE` fs)

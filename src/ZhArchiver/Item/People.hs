@@ -148,6 +148,7 @@ instance ZhData PeopleColumn
 
 instance HasImage PeopleColumn where
   fetchImage cli PCol {pcColumn = p} = PCol <$> fetchImage cli p
+  imageSet = imageSet . pcColumn
 
 instance ItemContainer People PeopleColumn where
   type ICOpt People PeopleColumn = ()
@@ -178,6 +179,7 @@ instance Commentable PeoplePin where
 
 instance HasImage PeoplePin where
   fetchImage cli p = PPin <$> fetchImage cli (pPin p)
+  imageSet = imageSet . pPin
 
 instance ItemContainer People PeoplePin where
   type ICOpt People PeoplePin = ()

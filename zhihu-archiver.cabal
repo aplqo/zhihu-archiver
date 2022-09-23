@@ -43,13 +43,13 @@ library
       ZhArchiver.Item.Question
       ZhArchiver.Progress
       ZhArchiver.Raw
-      ZhArchiver.REPL.FilePath
       ZhArchiver.REPL.Util
       ZhArchiver.Request.Paging
       ZhArchiver.Request.Uri
       ZhArchiver.Request.Zse96V3
       ZhArchiver.Types
       ZhArchiver.Util
+      ZhArchiver.Util.FilePath
   other-modules:
       ZhArchiver.Image.TH
       ZhArchiver.Raw.Parser.TH

@@ -24,13 +24,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Pandoc
 import Text.Pandoc.Walk
-import ZhArchiver.Image
-  ( HasImage (..),
-    ImgMap,
-    emptyImgMap,
-    getHtmlImages,
-    lookupLocalPath,
-  )
+import ZhArchiver.Image hiding (Image)
 import ZhArchiver.Raw
 import ZhArchiver.Raw.Parser.TH
 import ZhArchiver.Raw.Parser.Util
@@ -57,6 +51,7 @@ instance HasImage Content where
   fetchImage cli c =
     (\im -> c {contImages = im})
       <$> getHtmlImages cli (htmlText (contHtml c))
+  imageSet = elemImages . contImages
 
 contentFromHtml :: Text -> Content
 contentFromHtml u = Content {contHtml = Html u, contImages = emptyImgMap}

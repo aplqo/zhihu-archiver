@@ -58,6 +58,11 @@ instance HasImage AnsOrArt where
       AoaArticle ar -> AoaArticle <$> fetchImage cli ar
       AoaAnswer an -> AoaAnswer <$> fetchImage cli an
 
+  imageSet v =
+    case v of
+      AoaAnswer a -> imageSet a
+      AoaArticle a -> imageSet a
+
 instance Commentable AnsOrArt where
   hasComment (AoaArticle a) = hasComment a
   hasComment (AoaAnswer a) = hasComment a
