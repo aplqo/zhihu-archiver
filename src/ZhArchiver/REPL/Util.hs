@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module ZhArchiver.REPL.Util
@@ -9,15 +10,14 @@ module ZhArchiver.REPL.Util
     --
     pullItemI,
     pullItemCI,
-    pullItemCID,
     pullChildI,
     pullChildCI,
-    pullChildCID,
     pullQuestionAns,
     pullColumn,
   )
 where
 
+import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Default
 import Data.Maybe
@@ -76,12 +76,21 @@ setupCfg wid doc hom img =
       cfgDoc = doc
     }
 
-type WithCfg a = ReaderT Config (ImgFetcher Req) a
+type WithCfg a = ReaderT Config (ImgSaver Req) a
 
 runCfg :: Config -> WithCfg a -> IO a
 runCfg cfg v = do
-  (a, f) <- runReq defaultHttpConfig $ runImgFetcher $ runReaderT v cfg
-  -- saveImgFiles (cfgImgStore cfg) f
+  let is = cfgImgStore cfg
+  l1 <-
+    liftIO
+      ( ( \case
+            Left l -> error l
+            Right r -> r
+        )
+          <$> runExceptT (loadLinks is)
+      )
+  (a, f) <- runReq defaultHttpConfig $ runImgSaver (runReaderT v cfg) l1
+  storeLinks is f
   putNewline
   return a
 
@@ -98,8 +107,10 @@ pullItemWith ::
 pullItemWith com aid sign = do
   cli <- itemCli aid
   home <- asks cfgHome
-  r <- lift (fetchItem @a sign aid >>= com cli >>= fetchImage cli)
+  is <- asks cfgImgStore
+  (r, m) <- lift (lift (runImgFetcher (fetchItem @a sign aid >>= com cli >>= fetchImage cli)))
   liftIO $ saveZhData False (home </> showType @a Proxy) r
+  lift (saveImgFiles is m)
   return r
 
 pullItemI ::
@@ -147,8 +158,10 @@ pullChildWith com _ opt f sig =
   do
     home <- asks cfgHome
     cli <- childCli f (Proxy @i)
-    rs <- lift (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)
+    is <- asks cfgImgStore
+    (rs, i) <- lift (lift (runImgFetcher (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)))
     liftIO $ storeChildItems @a @i Proxy False (home </> showType @a Proxy </> showId f) opt rs
+    lift (saveImgFiles is i)
     return rs
 
 pullChildI ::
@@ -191,10 +204,10 @@ pullChildCID _ opt f sig = do
 pullQuestionAns :: ZseState -> IId (WithRaw Question) -> WithCfg ()
 pullQuestionAns sign qid = do
   q <- pullItemCI @Question qid sign
-  void (pullChildCID @Question @Answer Proxy () (wrVal q) sign)
+  void (pullChildCI @Question @Answer Proxy () (wrVal q) sign)
 
 pullColumn :: IId (WithRaw Column) -> WithCfg ()
 pullColumn iid = do
   c <- wrVal <$> pullItemI @Column iid ()
-  void (pullChildCID @Column @AnsOrArt Proxy True c ())
-  void (pullChildCID @Column @AnsOrArt Proxy False c ())
+  void (pullChildCI @Column @AnsOrArt Proxy True c ())
+  void (pullChildCI @Column @AnsOrArt Proxy False c ())
