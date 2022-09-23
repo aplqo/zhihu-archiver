@@ -29,10 +29,16 @@ module ZhArchiver.Image
     HasImage (..),
     getImage,
     getHtmlImages,
+    --
+    loadImageDir,
+    convertData,
+    convertDataDir,
+    checkImageDir,
   )
 where
 
 import Control.Monad.Catch
+import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class
 import Control.Monad.State
 import Crypto.Hash
@@ -61,8 +67,10 @@ import Network.Mime (defaultMimeMap)
 import System.Directory
 import System.FilePath
 import System.Posix.Files hiding (isSymbolicLink)
+import System.Posix.Types
 import Text.HTML.TagSoup
 import Text.URI hiding (makeAbsolute)
+import ZhArchiver.Item
 import ZhArchiver.Progress
 import ZhArchiver.Raw
 import ZhArchiver.Raw.Parser.TH
@@ -282,3 +290,45 @@ getHtmlImages cli htm =
             _ -> Nothing
         )
         . parseTags
+
+loadImageDir :: FilePath -> IO (HashMap FilePath FilePath)
+loadImageDir p =
+  listDirectory p
+    >>= fmap HM.fromList
+      . traverse
+        ( \f -> do
+            absP <- makeAbsolute (p </> f)
+            return (takeFileName f, absP)
+        )
+
+convertData :: (ZhData d, HasImage d, MonadIO m) => HashMap FilePath FilePath -> FilePath -> ImgSaver m d
+convertData mp f = do
+  d <-
+    liftIO $
+      ( \case
+          Left l -> error ("Parsing failed: " ++ l)
+          Right r -> r
+      )
+        <$> runExceptT (loadData f)
+  liftIO (createDirectory (f </> "image"))
+  traverse_
+    ( \rf -> do
+        let name = refFile rf
+            p1 = fromJust (HM.lookup name mp)
+            path = f </> "image" </> name
+        liftIO (createLink p1 path)
+        absP <- liftIO (makeAbsolute path)
+        modify (insertLink name absP)
+    )
+    (HS.toList (imageSet d))
+  return d
+
+convertDataDir :: (ZhData d, HasImage d, MonadIO m) => HashMap FilePath FilePath -> FilePath -> ImgSaver m [d]
+convertDataDir mp d =
+  liftIO (listDirectory d)
+    >>= traverse (\f -> convertData mp (d </> f))
+
+checkImageDir :: FilePath -> IO [(FilePath, CNlink)]
+checkImageDir p =
+  listDirectory p
+    >>= traverse (\f -> (\fs -> (f, linkCount fs)) <$> getFileStatus (p </> f))
