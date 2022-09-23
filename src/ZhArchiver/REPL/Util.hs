@@ -19,17 +19,10 @@ where
 
 import Control.Monad.Except
 import Control.Monad.Reader
-import Data.Default
-import Data.Maybe
-import qualified Data.Text.IO as TIO
 import Data.Typeable
 import Network.HTTP.Req
-import System.Directory (createDirectoryIfMissing)
 import System.FilePath
-import qualified Text.Pandoc as P
-import Text.Pandoc.Writers
 import ZhArchiver.Comment
-import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Item
 import ZhArchiver.Item.AnsOrArt
@@ -39,8 +32,8 @@ import ZhArchiver.Item.Question
 import ZhArchiver.Progress
 import ZhArchiver.Raw
 import ZhArchiver.Request.Zse96V3
-import ZhArchiver.Util.FilePath
 
+{-
 saveContent :: (ShowId a, ShowName a, HasContent a) => FilePath -> FilePath -> Cli -> a -> IO ()
 saveContent doc img cli a = do
   imgp <- fromJust <$> makeRelativeEx doc img
@@ -61,19 +54,19 @@ saveContent doc img cli a = do
       if x == '/'
         then '%' : '2' : 'F' : escapeSlash xs
         else x : escapeSlash xs
+-}
 
 data Config = Config
   { cfgCli :: Cli,
-    cfgHome, cfgImgStore, cfgDoc :: FilePath
+    cfgHome, cfgImgStore :: FilePath
   }
 
-setupCfg :: Int -> FilePath -> FilePath -> FilePath -> Config
-setupCfg wid doc hom img =
+setupCfg :: Int -> FilePath -> FilePath -> Config
+setupCfg wid hom img =
   Config
     { cfgCli = defaultCli {cliMaxWidth = wid},
       cfgHome = hom,
-      cfgImgStore = img,
-      cfgDoc = doc
+      cfgImgStore = img
     }
 
 type WithCfg a = ReaderT Config (ImgSaver Req) a
@@ -128,6 +121,7 @@ pullItemCI ::
   WithCfg (WithRaw a)
 pullItemCI = pullItemWith getComment
 
+{-
 pullItemCID ::
   forall a.
   (Item a, Commentable a, HasImage a, HasContent a, ShowName a, Show (IId a)) =>
@@ -141,6 +135,7 @@ pullItemCID iid sig = do
   Config {cfgDoc = doc, cfgImgStore = img} <- ask
   liftIO (saveContent (doc </> showType @a Proxy) img cli dat)
   return dat
+-}
 
 childCli :: forall a i. (ShowId a, ShowId i) => a -> Proxy i -> WithCfg Cli
 childCli a p = asks (pushHeader (showType p) . pushHeader (showValId a) . cfgCli)
@@ -184,6 +179,7 @@ pullChildCI ::
   WithCfg [WithRaw i]
 pullChildCI _ = pullChildWith @a @(WithRaw i) (`traverseP` getComment) Proxy
 
+{-
 pullChildCID ::
   forall a i.
   (ItemContainer a i, ShowName a, Commentable i, HasImage i, HasContent i, ShowName i) =>
@@ -200,6 +196,7 @@ pullChildCID _ opt f sig = do
   cli <- childCli f (Proxy @i)
   void (liftIO (traverseP cli (saveContent docs img) dats))
   return dats
+-}
 
 pullQuestionAns :: ZseState -> IId (WithRaw Question) -> WithCfg ()
 pullQuestionAns sign qid = do
