@@ -11,20 +11,17 @@ module ZhArchiver.Item.People
     People (..),
     CollType (..),
     PeopleColumn (..),
-    PeoplePin (..),
   )
 where
 
 import Data.Aeson hiding (Value)
 import Data.Aeson.TH (deriveJSON)
-import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Req
 import System.FilePath
 import Text.URI
 import Text.URI.QQ
-import ZhArchiver.Comment
 import ZhArchiver.Content
 import ZhArchiver.Image
 import ZhArchiver.Image.TH (deriveHasImage)
@@ -164,28 +161,11 @@ instance ItemContainer People PeopleColumn where
               [QueryParam [queryKey|include|] [queryValue|data[*].column.intro,followers,articles_count,voteup_count,items_count,description,created|]]
           )
 
-newtype PeoplePin = PPin {pPin :: Pin}
-  deriving (Show)
-  deriving newtype (ShowId, ShowName, FromJSON, ToJSON, HasContent)
-
-instance FromRaw PeoplePin where
-  parseRaw = $(rawParser 'PPin [('pPin, foFromRaw "target")])
-
-instance ZhData PeoplePin
-
-instance Commentable PeoplePin where
-  hasComment = hasComment . pPin
-  attachComment cli p = first PPin <$> attachComment cli (pPin p)
-
-instance HasImage PeoplePin where
-  fetchImage cli p = PPin <$> fetchImage cli (pPin p)
-  imageSet = imageSet . pPin
-
-instance ItemContainer People PeoplePin where
-  type ICOpt People PeoplePin = ()
-  type ICSigner People PeoplePin = ()
+instance ItemContainer People Pin where
+  type ICOpt People Pin = ()
+  type ICSigner People Pin = ()
   fetchItemsRaw cli _ _ (People {pUrlToken = PId uid}) = do
-    sp <- $(apiPath "pins" "moments") uid
+    sp <- $(pathTemplate [F "api", F "v4", F "v2", F "pins", T, F "moments"]) uid
     fmap Raw
       <$> reqPaging
         cli
