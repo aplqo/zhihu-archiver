@@ -27,7 +27,6 @@ import Network.HTTP.Req
 import Text.URI.QQ (pathPiece)
 import ZhArchiver.Author
 import ZhArchiver.Content
-import ZhArchiver.Image
 import ZhArchiver.Image.TH
 import ZhArchiver.Progress
 import ZhArchiver.Raw
@@ -110,12 +109,8 @@ parseRawComment =
               author <- o .: "author" >>= parseRaw
               created <- convertTime <$> (o .: "created_time")
               cont <-
-                o .: "is_delete" >>= \del ->
-                  if del
-                    then return Nothing
-                    else
-                      (\c -> Just (Content {contHtml = c, contImages = emptyImgMap}))
-                        <$> o .: "content"
+                fmap (\c -> Content {contHtml = c, contImages = Nothing})
+                  <$> o .:? "content"
               isAuthor <- o .: "is_author"
               liked <- o .: "like_count"
               disliked <- o .: "dislike_count"
