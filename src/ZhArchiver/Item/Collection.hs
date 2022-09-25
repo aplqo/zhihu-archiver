@@ -13,7 +13,7 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
-import Language.Haskell.TH (listE)
+import Language.Haskell.TH (conE)
 import Network.HTTP.Req
 import ZhArchiver.Author
 import ZhArchiver.Comment
@@ -36,7 +36,7 @@ data Collection = Collection
     colCreated, colUpdated :: Time,
     colCreator :: Author,
     colCommentCount :: Int,
-    colComment :: [Comment]
+    colComment :: Maybe [Comment]
   }
 
 deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Collection
@@ -59,7 +59,7 @@ instance FromRaw Collection where
            ('colUpdated, FoParse "updated_time" poTime),
            ('colCreator, foFromRaw "creator"),
            ('colCommentCount, foStock "comment_count"),
-           ('colComment, FoConst (listE []))
+           ('colComment, FoConst (conE 'Nothing))
          ]
      )
 
@@ -83,7 +83,7 @@ deriving instance (Show Collection)
 instance Commentable Collection where
   hasComment a = colCommentCount a /= 0
   attachComment cli a =
-    bimap (\c -> a {colComment = c}) (singletonRm "comment" . packLeaf)
+    bimap (\c -> a {colComment = Just c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment (pushHeader "comment" cli) StCollection (T.pack (show (colId a)))
 
 deriveHasImage

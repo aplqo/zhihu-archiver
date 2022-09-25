@@ -39,7 +39,7 @@ data Question = Question
     qUpdated :: Maybe Time,
     qContent :: Maybe Content,
     qCommentCount :: Int,
-    qComments :: [Comment]
+    qComments :: Maybe [Comment]
   }
 
 deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''Question
@@ -78,7 +78,7 @@ instance FromRaw Question where
            ('qUpdated, FoParseMaybe "updated_time" False poTime),
            ('qContent, FoParse "detail" poContentMaybe),
            ('qCommentCount, FoParse "comment_count" PoStock),
-           ('qComments, FoConst (listE []))
+           ('qComments, FoConst (conE 'Nothing))
          ]
      )
 
@@ -87,7 +87,7 @@ instance ZhData Question
 instance Commentable Question where
   hasComment = (/= 0) . qCommentCount
   attachComment cli v =
-    bimap (\c -> v {qComments = c}) (singletonRm "comment" . packLeaf)
+    bimap (\c -> v {qComments = Just c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment (pushHeader "comment" cli) StQuestion (T.pack (show (qId v)))
 
 deriveHasImage ''Question [('qAuthor, "author"), ('qContent, "content"), ('qComments, "comments")]

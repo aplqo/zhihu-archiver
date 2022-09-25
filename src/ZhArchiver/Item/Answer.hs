@@ -12,7 +12,7 @@ import Data.Bifunctor
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Language.Haskell.TH (listE)
+import Language.Haskell.TH (conE)
 import Network.HTTP.Req
 import ZhArchiver.Author
 import ZhArchiver.Comment
@@ -34,7 +34,7 @@ data Answer = Answer
     aVoteUp :: Int64,
     aContent :: Content,
     aCommentCount :: Int,
-    aComment :: [Comment]
+    aComment :: Maybe [Comment]
   }
 
 deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . tail} ''Answer
@@ -58,7 +58,7 @@ instance FromRaw Answer where
            ('aVoteUp, foStock "voteup_count"),
            ('aContent, FoParse "content" poContent),
            ('aCommentCount, foStock "comment_count"),
-           ('aComment, FoConst (listE []))
+           ('aComment, FoConst (conE 'Nothing))
          ]
      )
     where
@@ -93,7 +93,7 @@ deriving instance (Show Answer)
 instance Commentable Answer where
   hasComment a = aCommentCount a /= 0
   attachComment cli a =
-    bimap (\c -> a {aComment = c}) (singletonRm "comment" . packLeaf)
+    bimap (\c -> a {aComment = Just c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment
         (pushHeader "comments" cli)
         StAnswer

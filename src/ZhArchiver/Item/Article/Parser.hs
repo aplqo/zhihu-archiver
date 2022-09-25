@@ -28,6 +28,6 @@ mkArticleParser hasTitleImg =
               ("artVote", foStock "voteup_count"),
               ("artContent", FoParse "content" poContent),
               ("artCommentCount", foStock "comment_count"),
-              ("artComment", FoConst (listE []))
+              ("artComment", FoConst (conE 'Nothing))
             ]
     )

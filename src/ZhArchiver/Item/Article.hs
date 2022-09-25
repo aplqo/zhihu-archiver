@@ -34,7 +34,7 @@ data Article = Article
     artVote :: Int64,
     artContent :: Content,
     artCommentCount :: Int,
-    artComment :: [Comment]
+    artComment :: Maybe [Comment]
   }
 
 deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Article
@@ -70,7 +70,7 @@ deriving instance (Show Article)
 instance Commentable Article where
   hasComment a = artCommentCount a /= 0
   attachComment cli a =
-    bimap (\c -> a {artComment = c}) (singletonRm "comment" . packLeaf)
+    bimap (\c -> a {artComment = Just c}) (singletonRm "comment" . packLeaf)
       <$> fetchComment
         (pushHeader "comments" cli)
         StArticle

@@ -17,7 +17,7 @@ import Data.Int (Int64)
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
-import Language.Haskell.TH (listE)
+import Language.Haskell.TH (conE)
 import Network.HTTP.Req
 import Text.Pandoc
 import Text.Pandoc.Builder
@@ -111,7 +111,7 @@ data PinBody = PinBody
     pinContent :: [PinContent],
     pinOriginPin, pinRepin :: Maybe Pin,
     pinCommentCount :: Int,
-    pinComment :: [Comment]
+    pinComment :: Maybe [Comment]
   }
 
 data Pin = Pin
@@ -151,7 +151,7 @@ instance FromRaw PinBody where
            ('pinOriginPin, FoParseMaybe "origin_pin" False (PoBind [|parseRaw|])),
            ('pinRepin, FoParseMaybe "repin" False (PoBind [|parseRaw|])),
            ('pinCommentCount, foStock "comment_count"),
-           ('pinComment, FoConst (listE []))
+           ('pinComment, FoConst (conE 'Nothing))
          ]
      )
 
@@ -168,7 +168,7 @@ instance Commentable PinBody where
       ( p
           { pinOriginPin = orig,
             pinRepin = rp,
-            pinComment = c
+            pinComment = Just c
           },
         fromListRm
           [ ("comment", packLeaf rc),
