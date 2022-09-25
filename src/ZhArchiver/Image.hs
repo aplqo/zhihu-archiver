@@ -19,6 +19,7 @@ module ZhArchiver.Image
     emptyLM,
     loadLinks,
     storeLinks,
+    checkLinks,
     FileMap,
     emptyFileMap,
     ImgSaver,
@@ -162,6 +163,21 @@ loadLinks p =
         ( fmap HS.fromList
             . traverse (\d -> liftIO (makeAbsolute (p </> d)))
         )
+
+checkLinks :: LinkMap -> IO LinkMap
+checkLinks (FL lm) =
+  FL . HM.filter (not . HS.null)
+    <$> traverse (fmap HS.fromList . filterM checkLink . HS.toList) lm
+  where
+    checkLink l =
+      doesPathExist l >>= \e ->
+        if e
+          then do
+            sym <- pathIsSymbolicLink l
+            if sym
+              then readSymbolicLink l >>= checkLink
+              else return True
+          else return False
 
 insertLink :: FilePath -> FilePath -> LinkMap -> LinkMap
 insertLink k v (FL l) = FL (HM.insertWith HS.union k (HS.singleton v) l)
