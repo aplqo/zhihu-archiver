@@ -56,24 +56,7 @@ deriveJSON defaultOptions {fieldLabelModifier = camelTo2 '_' . drop 3} ''Activit
 
 instance ShowId Activity where
   showType = const "activity"
-  showId v =
-    case actTarget v of
-      ActAnswer a ->
-        "answer_" ++ showId a
-      ActArticle a ->
-        "article_" ++ showId a
-      ActColumn c ->
-        "column_" ++ showId c
-      ActCollection c ->
-        "collection_" ++ showId c
-      ActPeople p ->
-        "people_" ++ showId p
-      ActPin p ->
-        "pin_" ++ showId p
-      ActQuestion q ->
-        "question_" ++ showId q
-      ActOther t ->
-        "unknown_" ++ T.unpack t
+  showId = T.unpack . actId
 
 instance FromRaw Activity where
   parseRaw =
