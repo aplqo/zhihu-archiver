@@ -19,6 +19,7 @@ where
 
 import Control.Monad.Except
 import Control.Monad.Reader
+import Data.Foldable
 import Data.Typeable
 import Network.HTTP.Req
 import System.FilePath
@@ -58,7 +59,7 @@ saveContent doc img cli a = do
 
 data Config = Config
   { cfgCli :: Cli,
-    cfgHome, cfgImgStore :: FilePath
+    cfgHome, cfgImgMap :: FilePath
   }
 
 setupCfg :: Int -> FilePath -> FilePath -> Config
@@ -66,14 +67,14 @@ setupCfg wid hom img =
   Config
     { cfgCli = defaultCli {cliMaxWidth = wid},
       cfgHome = hom,
-      cfgImgStore = img
+      cfgImgMap = img
     }
 
 type WithCfg a = ReaderT Config (ImgSaver Req) a
 
 runCfg :: Config -> WithCfg a -> IO a
 runCfg cfg v = do
-  let is = cfgImgStore cfg
+  let is = cfgImgMap cfg
   l1 <-
     liftIO
       ( ( \case
@@ -100,10 +101,10 @@ pullItemWith ::
 pullItemWith com aid sign = do
   cli <- itemCli aid
   home <- asks cfgHome
-  is <- asks cfgImgStore
   (r, m) <- lift (lift (runImgFetcher (fetchItem @a sign aid >>= com cli >>= fetchImage cli)))
-  liftIO $ saveZhData False (home </> showType @a Proxy) r
-  lift (saveImgFiles is m)
+  let dest = home </> showType @a Proxy
+  liftIO $ saveZhData False dest r
+  lift (saveImgFiles (dest </> showId r </> "image") m)
   return r
 
 pullItemI ::
@@ -143,7 +144,7 @@ childCli a p = asks (pushHeader (showType p) . pushHeader (showValId a) . cfgCli
 pullChildWith ::
   forall a i.
   (ItemContainer a i, HasImage i) =>
-  (Cli -> [i] -> ImgFetcher Req [i]) ->
+  (Cli -> [i] -> Req [i]) ->
   Proxy i ->
   ICOpt a i ->
   a ->
@@ -153,11 +154,16 @@ pullChildWith com _ opt f sig =
   do
     home <- asks cfgHome
     cli <- childCli f (Proxy @i)
-    is <- asks cfgImgStore
-    (rs, i) <- lift (lift (runImgFetcher (fetchChildItems @a @i cli opt sig f >>= com cli >>= fetchImage cli)))
-    liftIO $ storeChildItems @a @i Proxy False (home </> showType @a Proxy </> showId f) opt rs
-    lift (saveImgFiles is i)
-    return rs
+    ret <- lift (runReq defaultHttpConfig (fetchChildItems @a @i cli opt sig f >>= com cli >>= traverseP cli (\c i -> runImgFetcher (fetchImage c i))))
+    let dest = home </> showType @a Proxy </> showId f
+        items = fmap fst ret
+        storePath = childStorePath @a @i Proxy Proxy dest opt
+    liftIO $ storeChildItems @a @i Proxy False dest opt items
+    lift $
+      traverse_
+        (\(item, img) -> saveImgFiles (storePath </> showId item </> "image") img)
+        ret
+    return items
 
 pullChildI ::
   forall a i.
