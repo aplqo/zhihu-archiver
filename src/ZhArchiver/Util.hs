@@ -1,7 +1,11 @@
+{-# LANGUAGE LambdaCase #-}
+
 module ZhArchiver.Util
   ( encodeFilePretty,
     Decoder,
     decodeFile,
+    runDecoder,
+    runDecoderOrError,
   )
 where
 
@@ -27,3 +31,15 @@ type Decoder = ExceptT String IO
 
 decodeFile :: (FromJSON a) => FilePath -> Decoder a
 decodeFile p = liftIO (eitherDecodeFileStrict p) >>= liftEither
+
+runDecoder :: Decoder d -> IO (Either String d)
+runDecoder = runExceptT
+
+runDecoderOrError :: Decoder b -> IO b
+runDecoderOrError =
+  fmap
+    ( \case
+        Right r -> r
+        Left e -> error e
+    )
+    . runDecoder
