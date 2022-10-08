@@ -21,7 +21,6 @@ module ZhArchiver.Image
     storeLinks,
     checkLinks,
     FileMap,
-    emptyFileMap,
     ImgSaver,
     runImgSaver,
     saveImgFiles,
@@ -36,6 +35,7 @@ where
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.State
+import Control.Monad.Writer
 import Crypto.Hash
 import Data.Aeson hiding (String, Value)
 import qualified Data.Aeson as JSON
@@ -183,11 +183,9 @@ insertLink :: FilePath -> FilePath -> LinkMap -> LinkMap
 insertLink k v (FL l) = FL (HM.insertWith HS.union k (HS.singleton v) l)
 
 -- | map from (type, hash) to content
-newtype FileMap = ImgFiles (HashMap ImgRef ByteString)
+newtype FileMap = ImgFiles (HS.HashSet (ImgRef, ByteString))
   deriving (Eq, Show)
-
-emptyFileMap :: FileMap
-emptyFileMap = ImgFiles HM.empty
+  deriving newtype (Semigroup, Monoid)
 
 type ImgSaver m = StateT LinkMap m
 
@@ -214,7 +212,7 @@ saveImgFiles pat (ImgFiles m) =
                   absP <- liftIO $ makeAbsolute path
                   modify (insertLink name absP)
       )
-      (HM.toList m)
+      (HS.toList m)
   where
     readonly = foldl1 unionFileModes [ownerReadMode, groupReadMode, otherReadMode]
 
@@ -225,10 +223,10 @@ saveImgFiles pat (ImgFiles m) =
           then readSymbolicLink p >>= readLink
           else pure p
 
-type ImgFetcher m = StateT FileMap m
+type ImgFetcher m = WriterT FileMap m
 
 runImgFetcher :: ImgFetcher m a -> m (a, FileMap)
-runImgFetcher f = runStateT f emptyFileMap
+runImgFetcher = runWriterT
 
 class HasImage a where
   fetchImage :: (MonadHttp m, MonadCatch m) => Cli -> a -> ImgFetcher m a
@@ -269,7 +267,7 @@ getImage url =
                       refImgDigest = ImgDigest (hash (responseBody dat))
                     }
              in do
-                  modify (\(ImgFiles f) -> ImgFiles (HM.insert ref body f))
+                  tell (ImgFiles (HS.singleton (ref, body)))
                   return (Just ref)
         )
         (const (pure Nothing))
